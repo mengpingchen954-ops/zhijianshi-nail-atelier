@@ -17,7 +17,9 @@
 - 自由编辑器浏览器回归 46 项、边界 9 项、3D 模块 17 项通过。
 - 36 份音频资产成功解码、非静音、峰值无削波；未冒充人工听音或实地工具录音。
 - 已查看预约、十指设计、建构侧面、照灯、猫眼、各款成品和手机近景截图，修复甲缘穿插与视图指示不同步。
-- 待完成：GitHub Actions 部署和匿名公网子路径验证。
+- GitHub Actions Pages 部署成功，公开试玩：https://mengpingchen954-ops.github.io/zhijianshi-nail-atelier/ 。
+- 匿名公网验证通过：林栀、温岚完整服务、收藏与照片导出；顾客模式边界检查 15 项；自由编辑器及仓库子路径资源加载正常。
+- 源码已公开：https://github.com/mengpingchen954-ops/zhijianshi-nail-atelier 。
 
 ## 备注
 - 当前游戏为可控工艺模拟，无真实流体或磁粒子物理。
