@@ -1,0 +1,34 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1280,height:900},hasTouch:true});
+const page=await context.newPage(),errors=[],checks=[];
+page.on('pageerror',e=>errors.push(e.message));
+const check=(name,ok)=>{assert.ok(ok,name);checks.push(name);console.log('PASS',name);};
+try{
+ await page.goto('http://127.0.0.1:5184/?mode=free',{waitUntil:'networkidle'});await page.locator('#start').click();
+ await page.locator('[data-finger="2"]').click();await page.locator('[data-tab="paint"]').click();
+ const a=await page.evaluate(()=>nailAtelier.project(2,.35,.35)),b=await page.evaluate(()=>nailAtelier.project(2,.65,.65));
+ const client=await context.newCDPSession(page);
+ await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x,y:a.y,id:1}]});
+ for(let i=1;i<=12;i++)await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x+(b.x-a.x)*i/12,y:a.y+(b.y-a.y)*i/12,id:1}]});
+ await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ check('touch drag paints and does not rotate camera',await page.evaluate(()=>nailAtelier.design.nails[2].strokes.length===1&&nailAtelier.action===null));
+ await page.locator('[data-tab="view"]').click();const before=await page.evaluate(()=>({data:JSON.stringify(nailAtelier.design),camera:nailAtelier.scene.camera.position.toArray()}));
+ await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x,y:a.y,id:1}]});await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x+100,y:a.y+30,id:1}]});await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(300);
+ check('explicit view mode separates touch orbit from painting',await page.evaluate(before=>JSON.stringify(nailAtelier.design)===before.data&&JSON.stringify(nailAtelier.scene.camera.position.toArray())!==JSON.stringify(before.camera),before));
+ await page.locator('[data-tab="paint"]').click();const q=await page.evaluate(()=>nailAtelier.project(2,.5,.5));await page.mouse.move(q.x,q.y);await page.mouse.down();await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await page.mouse.up();check('window blur ends pointer capture and persists',await page.evaluate(()=>nailAtelier.action===null));
+ await page.waitForTimeout(550);const raw=await page.evaluate(()=>localStorage.getItem('finger-poetry-draft-v1'));
+ await page.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key.startsWith('finger-poetry-'))throw new DOMException('Quota full','QuotaExceededError');return window.originalSetItem.call(this,key,value);};});
+ await page.locator('[data-color="#ed927a"]').click();await page.locator('#fill-one').click();await page.waitForTimeout(650);
+ check('failed autosave explicitly reports error and preserves prior draft',await page.locator('#save-status').textContent()==='保存失败 · 请导出备份'&&await page.evaluate(raw=>localStorage.getItem('finger-poetry-draft-v1')===raw,raw));
+ await page.locator('#finish-work').click();await page.locator('#save-work').click();check('failed collection save cannot report success',/收藏保存失败/.test(await page.locator('#toast').textContent()));
+ await page.evaluate(()=>{Storage.prototype.setItem=window.originalSetItem;});
+ const malformed={name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({version:1,nails:[]}))};
+ const beforeImport=await page.evaluate(()=>JSON.stringify(nailAtelier.design));await page.locator('#import-file').setInputFiles(malformed);check('malformed import is rejected without replacing current work',await page.evaluate(s=>JSON.stringify(nailAtelier.design)===s,beforeImport)&&/导入失败/.test(await page.locator('#toast').textContent()));
+ await page.evaluate(()=>localStorage.setItem('finger-poetry-shelf-v1','{bad'));await page.locator('#save-work').click();check('corrupt shelf is preserved and cannot be silently overwritten',await page.evaluate(()=>localStorage.getItem('finger-poetry-shelf-v1')==='{bad')&&/已损坏/.test(await page.locator('#toast').textContent()));
+ const fresh=await browser.newContext();await fresh.addInitScript(()=>{localStorage.setItem('finger-poetry-draft-v1','{bad-draft');});const damaged=await fresh.newPage();await damaged.goto('http://127.0.0.1:5184/?mode=free',{waitUntil:'networkidle'});await damaged.locator('#start').click();await damaged.locator('[data-finger="2"]').click();await damaged.locator('#fill-one').click();await damaged.waitForTimeout(600);check('corrupt draft pauses autosave and keeps original raw data',await damaged.evaluate(()=>localStorage.getItem('finger-poetry-draft-v1')==='{bad-draft')&&/自动保存已暂停/.test(await damaged.locator('#save-status').textContent()));await fresh.close();
+ check('no uncaught errors in edge cases',errors.length===0);
+ fs.writeFileSync('artifacts/edge-test-report.json',JSON.stringify({date:new Date().toISOString(),checks,errors},null,2));
+}catch(e){await page.screenshot({path:'artifacts/edge-failure.png'});console.error(e);process.exitCode=1;}finally{await browser.close();}

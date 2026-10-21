@@ -1,0 +1,25 @@
+{
+  "name": "nail-atelier",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5184",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5185",
+    "test": "node --test tests/state.test.js tests/service.test.js",
+    "test:salon": "node tests/salon-playthrough.mjs",
+    "test:salon:edges": "node tests/salon-edges.mjs",
+    "audio:build": "node scripts/make-audio.mjs",
+    "test:browser": "node tests/ui-playthrough.mjs",
+    "test:modules": "node tests/playthrough.mjs",
+    "test:edges": "node tests/edge-cases.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1",
+    "vite": "^8.3.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
