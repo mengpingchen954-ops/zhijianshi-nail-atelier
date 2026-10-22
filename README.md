@@ -19,6 +19,8 @@ GitHub Pages：https://mengpingchen954-ops.github.io/zhijianshi-nail-atelier/
 6. 基础层、款式层、封层各自照灯；选择左手或右手后，整只手的五指一起进入固化灯。灯腔按本手五指空间范围准备，透明查看罩显示拇指也在灯内；完整送入后感应亮灯、风机和倒计时才启动，取出后才解锁。提前取手立即熄灯并中止本轮，可缩短等待动画。
 7. 交付后收藏完整作品、拍照下载或导出可编辑 JSON。自由创作入口保留旧版画笔、橡皮、渐变、装饰、收藏与备份能力。
 
+设计板用「短甲／中长甲／长甲」显示长短，绿色滑杆区间代表顾客可接受范围，拖动时即时预览。甲形与长度分项显示完成指位数，未满足要求时可点击具体手指直接定位到修改控件；保留玩家设计与原有内部长度数据。
+
 编辑时右键拖动旋转，滚轮缩放。触屏先点眼睛切换旋转，再点回操作；支持双指缩放。侧面查看建构厚薄。Ctrl+Z / Ctrl+Shift+Z 撤销/重做本阶段，已确认的前一阶段不会被误撤回。
 
 ## 声音与存档
@@ -52,6 +54,7 @@ npm test
 npm run test:salon
 npm run test:interactions
 npm run test:music
+npm run test:length
 npm run test:audio
 npm run test:salon:edges
 npm run test:browser

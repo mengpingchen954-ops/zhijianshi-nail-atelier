@@ -31,6 +31,7 @@ export const STAGES={
 };
 export const SESSION_KEY='finger-poetry-service-v2',ALBUM_KEY='finger-poetry-album-v2';
 export const customer=id=>CLIENTS.find(c=>c.id===id);
+export const nailLengthLabel=value=>value<=.65?'短甲':value<=.82?'中长甲':'长甲';
 export function targetDesign(c){
  const d=createDesign();d.name=c.title;d.nails.forEach((n,i)=>{Object.assign(n,{shape:c.shape,length:c.length,base:c.palette[i%5===3?1:0],finish:c.finish,topcoat:c.finish==='matte'?'matte':'gloss',pattern:c.pattern==='gradient'?null:c.pattern,width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:.7});
  if(c.pattern==='gradient')n.gradient={color:c.palette[1],angle:15,range:.85};
@@ -122,13 +123,13 @@ export function viewDesign(s){
 }
 export function designRequirements(s){
  const c=customer(s.client),indices=targetsFor(s),nails=indices.map(i=>s.plan.nails[i]),has=(n,type)=>n.decorations.some(d=>!d.hidden&&d.type===type),count=type=>nails.filter(n=>has(n,type)).length;
- const painted=nails.every(n=>!n.unpainted),shape=nails.every(n=>n.shape===c.shape&&n.length<=c.length+.08);
+ const painted=nails.every(n=>!n.unpainted),wrongShape=indices.filter(i=>s.plan.nails[i].shape!==c.shape),tooLong=indices.filter(i=>s.plan.nails[i].length>c.length+.08);
  const patternOK=!c.pattern||(c.pattern==='french'?nails.every(n=>n.pattern==='french'):[...new Set(indices.map(i=>Math.floor(i/5)))].every(hand=>indices.some(i=>Math.floor(i/5)===hand&&(c.pattern==='gradient'?!!s.plan.nails[i].gradient:s.plan.nails[i].pattern===c.pattern))));
  const effect=nails.every(n=>n.finish===c.finish)&&patternOK;
  const palette=nails.every(n=>!n.unpainted&&c.palette.some(hex=>{const a=n.base.slice(1).match(/../g).map(v=>parseInt(v,16)),b=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return Math.hypot(...a.map((v,i)=>v-b[i]))<55;}));
  const features=!c.deco||(c.id==='lu'?indices.filter(i=>i<5&&has(s.plan.nails[i],'bow')).length>=2&&indices.filter(i=>i>4&&has(s.plan.nails[i],'butterfly')).length>=2:count(c.deco)>=(c.route==='repair'?1:c.feature.length));
  const labels={flower:'小花',star:'星星',pearl:'珍珠',foil:'金箔',bow:'蝴蝶结'},effects={catEye:'猫眼',matte:'哑光',gloss:'亮泽',french:'法式',gradient:'渐变',marble:'晕纹'};
- const checks=[{key:'painted',label:`先为${indices.length===1?'维修指':'十指'}选择底色（${nails.filter(n=>!n.unpainted).length}/${nails.length}）`,ok:painted},{key:'shape',label:`${{round:'圆形',square:'方圆形',almond:'杏仁形',oval:'椭圆形'}[c.shape]}甲 · 长度 ≤ ${(c.length+.08).toFixed(2)}`,ok:shape},{key:'effect',label:`${effects[c.pattern||c.finish]}${['gradient','marble'].includes(c.pattern)?'：每只手至少一指，其余可自由搭配':''}`,ok:effect},{key:'palette',label:'使用顾客期望的色系',ok:palette}];
+ const checks=[{key:'painted',label:`先为${indices.length===1?'维修指':'十指'}选择底色（${nails.filter(n=>!n.unpainted).length}/${nails.length}）`,ok:painted},{key:'shape',label:`${indices.length===1?'维修指':'十指'}改为${{round:'圆形',square:'方圆形',almond:'杏仁形',oval:'椭圆形'}[c.shape]}（${indices.length-wrongShape.length}/${indices.length}）`,ok:!wrongShape.length,fingers:wrongShape},{key:'length',label:`长度适合顾客 · ${nailLengthLabel(c.length)}（${indices.length-tooLong.length}/${indices.length}）`,ok:!tooLong.length,fingers:tooLong},{key:'effect',label:`${effects[c.pattern||c.finish]}${['gradient','marble'].includes(c.pattern)?'：每只手至少一指，其余可自由搭配':''}`,ok:effect},{key:'palette',label:'使用顾客期望的色系',ok:palette}];
  if(c.deco)checks.push({key:'features',label:c.id==='lu'?'左手至少两指蝴蝶结，右手至少两指蝴蝶':`至少${c.route==='repair'?1:c.feature.length}指${labels[c.deco]} · 位置由你安排`,ok:features});
  if(c.id==='lin'||c.id==='su')checks.push({key:'comfort',label:c.id==='su'?'不使用凸起的水钻或珍珠':'不使用水钻',ok:nails.every(n=>!has(n,'gem')&&(c.id!=='su'||!has(n,'pearl')))});
  return checks;
@@ -136,7 +137,7 @@ export function designRequirements(s){
 export function evaluateService(s){
  const ids=stepsFor(customer(s.client)).filter(k=>k!=='finish'),indices=targetsFor(s),total=ids.length*indices.length,done=indices.reduce((sum,i)=>sum+ids.filter(k=>s.work[i].done.includes(k)).length,0),missing=[];
  for(const i of indices)for(const id of ids)if(!s.work[i].done.includes(id))missing.push({index:i,step:id,label:STAGES[id].name});
- const checks=designRequirements(s),style=checks.filter(r=>['painted','shape','effect'].includes(r.key)).every(r=>r.ok),features=checks.filter(r=>['features','comfort'].includes(r.key)).every(r=>r.ok),palette=checks.find(r=>r.key==='palette').ok;
+ const checks=designRequirements(s),style=checks.filter(r=>['painted','shape','length','effect'].includes(r.key)).every(r=>r.ok),features=checks.filter(r=>['features','comfort'].includes(r.key)).every(r=>r.ok),palette=checks.find(r=>r.key==='palette').ok;
  const score=Math.round(70*done/total+(style?10:0)+(features?10:0)+(palette?10:0));return {score,missing,style,features,palette,complete:done===total&&style&&features&&palette};
 }
 export function validateSession(value){
