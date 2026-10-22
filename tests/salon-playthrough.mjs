@@ -14,10 +14,11 @@ async function brushNail(i,step){
  coords.unshift([.5,step==='file'?.8:.08]);let p=await point(i,...coords[0]);await page.mouse.move(p.x,p.y);await page.mouse.down();for(const uv of coords){p=await point(i,...uv);await page.mouse.move(p.x,p.y,{steps:2});}await page.mouse.up();
 }
 try{
- const response=await page.goto(url,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator('#open-book').click();
+ const response=await page.goto(url,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator(clients[0].startsWith('lesson-')?'#welcome-learn':'#open-book').click();
  for(const id of clients){
-  if(!(await page.locator('[data-client="'+id+'"]').isVisible()))await page.locator('#home').click();
-  await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();await consultCustomer(page);await designCustomer(page,id);await page.locator('#confirm-plan').click();
+  if(id.startsWith('lesson-')){if(!(await page.locator(`[data-lesson="${id}"]`).isVisible()))await page.locator('#learning').click();await page.locator(`[data-lesson="${id}"]`).click();}
+  else{if(!(await page.locator('[data-client="'+id+'"]').isVisible()))await page.locator('#home').click();await page.locator('[data-client="'+id+'"]').click();}
+  await page.locator('#accept-client').click();await consultCustomer(page);await designCustomer(page,id);await page.locator('#confirm-plan').click();
   let guard=0;
   while((await state()).mode==='work'&&guard++<30){
    const s=await state(),step=s.step;console.log(id,step);

@@ -67,7 +67,7 @@ export class NailScene{
   const wood=new T.MeshStandardMaterial({color:'#ceb096',roughness:.7});this.mesh(new T.BoxGeometry(17,.24,14),wood,V(0,-.36,0));
   const weave=document.createElement('canvas');weave.width=weave.height=128;const ctx=weave.getContext('2d');ctx.fillStyle='#aaa';ctx.fillRect(0,0,128,128);ctx.strokeStyle='#bbb';ctx.lineWidth=1;for(let i=0;i<128;i+=4){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,128);ctx.moveTo(0,i);ctx.lineTo(128,i);ctx.stroke();}const bump=new T.CanvasTexture(weave);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.repeat.set(15,12);
   const pad=new T.MeshStandardMaterial({color:'#f2e5d8',roughness:.9,bumpMap:bump,bumpScale:.002});this.mesh(new T.BoxGeometry(7,.09,4.8),pad,V(0,-.2,-.3));this.roomMaterials={wood,pad};const detailsStart=this.scene.children.length;
-  const tray=new T.MeshStandardMaterial({color:'#dcb9a3',roughness:.38,metalness:.15});this.mesh(new T.CylinderGeometry(.85,.85,.06,64),tray,V(3,.05,-1.6));
+  const tray=new T.MeshStandardMaterial({color:'#dcb9a3',roughness:.38,metalness:.15});this.tray=this.mesh(new T.CylinderGeometry(.85,.85,.06,64),tray,V(3,.05,-1.6));this.roomMaterials.tray=tray;
   for(let i=0;i<4;i++){const c=['#d998ad','#a599cf','#82bbd4','#c7a364'][i];const g=new T.MeshPhysicalMaterial({color:c,roughness:.22,clearcoat:1});this.mesh(new T.CylinderGeometry(.16,.18,.37,24),g,V(-2.8+i*.49,.04,-2.35));this.mesh(new T.CylinderGeometry(.1,.1,.32,24),new T.MeshStandardMaterial({color:'#594338',roughness:.3,metalness:.1}),V(-2.8+i*.49,.38,-2.35));}
   const gold=new T.MeshStandardMaterial({color:'#bd975b',metalness:.75,roughness:.27});
   for(let i=0;i<2;i++){const brush=this.mesh(new T.CylinderGeometry(.025,.034,1.65,18),gold,V(2.6+i*.22,.02,.1));brush.rotation.z=Math.PI/2;brush.rotation.y=.25;}
@@ -75,6 +75,20 @@ export class NailScene{
   const vase=this.mesh(new T.SphereGeometry(.32,24,16),new T.MeshStandardMaterial({color:'#e6c2b3',roughness:.5}),V(-3.5,.15,1.3),V(1,1.5,1));
   for(let i=0;i<4;i++){const stem=this.mesh(new T.CylinderGeometry(.011,.015,.8,8),new T.MeshStandardMaterial({color:'#8b9a74'}),V(-3.5+(i-1.5)*.08,.86,1.3));stem.rotation.z=(i-1.5)*.15;for(let j=0;j<5;j++){const p=this.mesh(new T.SphereGeometry(.065,12,8),new T.MeshStandardMaterial({color:i%2?'#e5a8b5':'#f6e5dd'}),V(stem.position.x+Math.cos(j*1.26)*.08,1.27+Math.sin(j*1.26)*.05,1.3),V(1,1,.6));}}
   this.roomDetails=this.scene.children.slice(detailsStart);
+ }
+ studio(settings,design=null,displayOwned=false,thumbnail=null){
+  this.roomMaterials.pad.color.set(settings.mat==='sage-mat'?'#b9c8ba':'#f2e5d8');this.roomMaterials.tray.color.set(settings.tray==='rose-tray'?'#b7757e':'#dcb9a3');this.tray.position.x=settings.layout==='left'?-3:3;
+  if(!this.displayStand){
+   const group=new T.Group();this.scene.add(group);this.displayStand=group;this.roomDetails.push(group);
+   this.mesh(new T.BoxGeometry(1.72,.08,1.18),new T.MeshStandardMaterial({color:'#b69570',metalness:.45,roughness:.3}),V(0,0,0),null,group);
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=512;this.displayTexture=new T.CanvasTexture(canvas);this.displayTexture.colorSpace=T.SRGBColorSpace;this.displayCanvas=canvas;
+   const board=this.mesh(new T.PlaneGeometry(1.6,1.06),new T.MeshBasicMaterial({map:this.displayTexture}),V(0,.045,0),null,group);board.rotation.x=-Math.PI/2;
+  }
+  this.displayStand.visible=displayOwned;this.displayStand.position.set(settings.layout==='left'?-3.5:3.5,-.08,-.1);this.displayStand.rotation.y=settings.layout==='left'?-.18:.18;
+  const key=JSON.stringify(design);if(key!==this.displayKey){const x=this.displayCanvas.getContext('2d');x.fillStyle='#faf0e6';x.fillRect(0,0,512,512);x.textAlign='center';x.fillStyle='#805663';x.font='22px sans-serif';x.fillText(design?.name?.slice(0,16)||'我的指尖作品',256,58);
+   if(design)for(let i=0;i<10;i++){const n=design.nails[i];x.save();x.translate(12+i%5*100,90+Math.floor(i/5)*190);x.drawImage(thumbnail?thumbnail(n,i):this.texture(n),0,0,90,170);x.restore();}
+   else{x.font='18px sans-serif';x.fillText('收藏作品后，在工作室选择陈列',256,270);}this.displayTexture.needsUpdate=true;this.displayKey=key;
+  }this.renderer.shadowMap.needsUpdate=true;
  }
  fingerGeometry(length,radius){
   const pts=[],uv=[],idx=[],rings=42,sides=24;
@@ -202,7 +216,7 @@ export class NailScene{
   let target=V(0,.18,-.1),dist=10.5;
   if(mode==='detail'){target=this.rec[index].group.localToWorld(surface(this.design?.nails[index]||{length:.7},index,.5,.48));dist=1.9;}
   if(mode==='hand'){target=this.hands[Math.floor(index/5)].localToWorld(V(0,.15,-.25));dist=this.camera.aspect<.8?10:8.6;}
-  if(mode==='both')dist=Math.max(dist,12/this.camera.aspect);
+  if(mode==='both'||mode==='studio')dist=Math.max(dist,12/this.camera.aspect)*(mode==='studio'?1.2:1);
   this.controls.target.copy(target);this.camera.position.copy(target).add(V(.12,dist*.91,dist*.41));this.controls.update();this.camera.updateMatrixWorld(true);
  }
  setViewOnly(on){this.controls.mouseButtons.LEFT=on?T.MOUSE.ROTATE:null;this.controls.enableRotate=true;this.controls.touches.ONE=on?T.TOUCH.ROTATE:null;}

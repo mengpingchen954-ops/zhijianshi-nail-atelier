@@ -10,8 +10,8 @@ const details={
 };
 export function consultationTopics(c){const d=details[c.id]||{style:c.quote+' 请保留这些重点：'+c.limit+'。装饰位置你来安排。',care:c.old==='tips'?'请卸掉旧甲片，清洁后逐指重新选片。':c.old?'先卸旧色、清洁，再做本甲建构。':c.route==='natural'?'保留本甲，清洁后做建构加固。':'这次想做甲片，请检查宽度、弧度和贴合。',comfort:c.look==='micro'?'我每天弹琴，要短方圆甲，不用凸起饰品。':c.look==='syrup'?'继续做陶艺，短方圆、平贴金箔更方便。':c.look==='liquid'?'我要包花，请保持短圆甲，不要凸起装饰。':c.look==='velvet'?'经常翻书，短圆甲舒服，细星星平贴就好。':'甲形与长度按参考方向，整套协调，装饰别太拥挤。'};return [
  {id:'style',label:'聊参考款式',question:'你最想保留参考图里的哪些细节？',answer:d.style,note:'款式：'+c.limit},
- {id:'care',label:'确认当前甲况',question:'现在有旧美甲吗？这次想做本甲还是贴甲片？',answer:d.care+(c.look?' 请照顾每根手指的甲况，再做新款。':''),note:'流程：'+(c.route==='repair'?'只维修右食指':(c.old?'卸旧 → ':'')+(c.dirty||c.old?'清洁 → ':'')+(c.route==='natural'?'本甲建构':'逐指试片与压合'))},
- {id:'comfort',label:'聊日常与长短',question:'日常会用手做什么？对长短和装饰有什么要求？',answer:d.comfort+(c.look?' 留白和重点要互相呼应。':''),note:'日常：'+d.comfort},
+ {id:'care',label:'确认当前甲况',question:'现在有旧美甲吗？这次想做本甲还是贴甲片？',answer:d.care+(c.look||c.lesson?' 请照顾每根手指的甲况，再做新款。':''),note:'流程：'+(c.route==='repair'?'只维修右食指':(c.old?'卸旧 → ':'')+(c.dirty||c.old?'清洁 → ':'')+(c.route==='natural'?'本甲建构':'逐指试片与压合'))},
+ {id:'comfort',label:'聊日常与长短',question:'日常会用手做什么？对长短和装饰有什么要求？',answer:d.comfort+(c.look||c.lesson?' 留白和重点要互相呼应。':''),note:'日常：'+d.comfort},
  {id:'budget',label:'确认服务预算',question:`本次服务是 ${c.price} 金币，可以吗？设计位置由我搭配，先给你看十指设计。`,answer:`可以，${c.price} 金币在预算内。先聊好这些，再看你设计的十指；不用把参考图直接复制过来。`,note:`预算：${c.price} 金币 · 沟通后自由设计`}
 ];}
 export const customerReview=c=>details[c.id]?.review||c.seasonReview||'这一套新款有自己的细节，也适合我的日常。谢谢你认真听我说。';

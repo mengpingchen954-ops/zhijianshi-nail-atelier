@@ -16,6 +16,16 @@ for(const [i,look] of LOOKS.entries()){
  const host=CLIENTS.find(c=>c.id===seasonalHosts[i]);
  CLIENTS.push({...host,id:'trend-'+look.id,look:look.id,season:SEASON.id,seasonReview:look.review,title:look.name,palette:look.palette,color:look.color,shape:look.shape,length:look.length,finish:look.finish,pattern:look.pattern,deco:look.accent,feature:look.accent?[3,8]:[],price:host.price+30,quote:look.brief,limit:look.request});
 }
+for(const [i,changes] of [
+ {title:'第一束短甲',palette:['#c997a4','#e6c4bb','#bb877c'],shape:'square',length:.5,finish:'gloss',pattern:null,deco:null,feature:[],route:'natural',price:98},
+ {title:'留两颗小星星',palette:['#9aa99c','#d8cdb8','#bba875'],shape:'round',length:.52,finish:'gloss',pattern:null,deco:'star',feature:[3,8],route:'natural',price:128},
+ {title:'可可细边练习',palette:['#c39b8d','#d3b4a1','#795042'],shape:'square',length:.58,finish:'gloss',pattern:'french',deco:null,feature:[],route:'tips',price:158},
+ {title:'短甲里的流光',palette:['#42675b','#8caa89','#b4aa7e'],shape:'round',length:.54,finish:'catEye',pattern:null,deco:null,feature:[],route:'natural',price:178},
+ {title:'绯色追光细法式',palette:['#974c62','#ce97a0','#6b3d50'],shape:'almond',length:.65,finish:'catEye',pattern:'french',deco:'foil',feature:[3,8],route:'tips',price:218}
+].entries()){
+ CLIENTS.push({...CLIENTS[0],...changes,id:'lesson-'+(i+1),name:'小满',initial:'满',role:'学艺陪练 · 第 '+(i+1)+' 课',lesson:i+1,old:null,dirty:false,width:1,curve:1,quote:['先做一套短短的纯色甲，我陪你一步步来。','这次只加两指星星，其他留白就好。','我想试短方圆甲片和巧克力细边，贴合要稳。','短圆甲配绿色猫眼，想看到转手时光带流动。','把猫眼、细法式和两指金箔放在一起，颜色与位置由你设计。'][i],limit:[ '短方圆 · 纯色亮泽 · 先练铺色','短圆甲 · 亮泽 · 至少两指星星','短方圆甲片 · 巧克力细法式≤10%','短圆甲 · 绿色猫眼 · 磁吸后固化','杏仁甲片 · 猫眼叠细法式≤10% · 两指金箔'][i]});
+}
+for(const id of seasonalHosts){const host=CLIENTS.find(c=>c.id===id),next=CLIENTS.find(c=>c.id==='trend-'+LOOKS[seasonalHosts.indexOf(id)].id);CLIENTS.push({...next,id:'return-'+id,returnOf:id,role:host.role+' · 常客回访'});}
 export const STAGES={
  inspect:{name:'检查甲况',short:'检查',tool:'inspect',hint:'逐指检查甲床、旧材料与污垢，点击甲面记录。',sound:'pick'},
  remove:{name:'卸除旧材料',short:'卸旧',tool:'drill',hint:'在旧材料上来回移动；完成后露出本甲。',sound:'drill'},
@@ -41,6 +51,8 @@ export const nailLengthLabel=value=>value<=.65?'短甲':value<=.82?'中长甲':'
 export function targetDesign(c){
  if(c.look){const d=lookDesign(c.look);d.nails.forEach((n,i)=>Object.assign(n,{width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:.7}));return d;}
  const d=createDesign();d.name=c.title;d.nails.forEach((n,i)=>{Object.assign(n,{shape:c.shape,length:c.length,base:c.palette[i%5===3?1:0],finish:c.finish,topcoat:c.finish==='matte'?'matte':'gloss',pattern:c.pattern==='gradient'?null:c.pattern,width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:.7});
+ if(c.lesson===3||c.lesson===5)n.polish={opacity:.5,layers:2,tipWidth:.065,tipColor:'#623e32',catWidth:.23,catSoftness:.85,catColor:'#ffe5d6',chrome:0};
+ if(c.lesson===4)n.polish={catWidth:.35,catSoftness:.9,catColor:'#dbedbe',opacity:.85,layers:2};
  if(c.pattern==='gradient')n.gradient={color:c.palette[1],angle:15,range:.85};
  if(c.feature.includes(i)&&c.deco)n.decorations.push({id:uid(),type:c.id==='lu'&&i>4?'butterfly':c.deco,u:.5,v:.54,rotation:i>4?-.18:.18,scale:1.1});
  });return d;
@@ -151,6 +163,8 @@ export function designRequirements(s){
   if(c.look==='aura'){label='每手至少一指中心光晕，晕染范围40%–85%';ok=perHand(n=>n.pattern==='aura'&&polishValues(n).auraSize>=.4&&polishValues(n).auraSize<=.85);}
   checks.push({key:'material',label,ok});
  }
+ if(c.lesson===3||c.lesson===5)checks.push({key:'material',label:'巧克力细边≤10%，透底≤65%',ok:nails.every(n=>polishValues(n).tipWidth<=.1&&polishValues(n).tipColor.toLowerCase()==='#623e32'&&polishValues(n).opacity<=.65)});
+ if(c.lesson===1)checks.push({key:'comfort',label:'先练纯色：本课不叠图案、渐变或装饰',ok:nails.every(n=>!n.pattern&&!n.gradient&&!n.decorations.some(d=>!d.hidden))});
  return checks;
 }
 export function evaluateService(s){
@@ -161,6 +175,7 @@ export function evaluateService(s){
 }
 export function validateSession(value){
  const s=clone(value);if(!s||s.version!==2||!customer(s.client)||!['plan','work','result'].includes(s.phase)||!Number.isInteger(s.step)||s.step<0||s.step>=stepsFor(customer(s.client),s.plan).length||!Array.isArray(s.work)||s.work.length!==10)throw Error('服务存档格式无效');
+ if(s.returnVisit!==undefined&&(!Number.isSafeInteger(s.returnVisit)||s.returnVisit<0||s.returnVisit>1000000))throw Error('回访进度无效');
  if(s.consultation!==undefined&&(!Array.isArray(s.consultation)||s.consultation.length>4||new Set(s.consultation).size!==s.consultation.length||s.consultation.some(id=>!['style','care','comfort','budget'].includes(id))))throw Error('顾客沟通记录无效');
  s.plan=validateDesign(s.plan);for(const w of s.work){if(!w||!Array.isArray(w.done)||w.done.length>20||!w.done.every(k=>Object.hasOwn(STAGES,k))||!w.coverage||typeof w.coverage!=='object'||!Number.isFinite(w.initialLength)||w.initialLength<.45||w.initialLength>1.3||!Number.isFinite(w.build)||w.build<0||w.build>1||!w.magnet||!Number.isFinite(w.magnet.u)||w.magnet.u<0||w.magnet.u>1||!Number.isFinite(w.magnet.angle)||Math.abs(w.magnet.angle)>Math.PI||![0,1,2,3,4].includes(w.fitWidth)||![0,1].includes(w.fitCurve)||!Number.isFinite(w.dirty)||w.dirty<0||w.dirty>1||!Number.isFinite(w.old)||w.old<0||w.old>1)throw Error('手指施工记录无效');for(const arr of Object.values(w.coverage))if(!Array.isArray(arr)||arr.length>30||!arr.every(v=>Number.isInteger(v)&&v>=0&&v<30))throw Error('施工覆盖记录无效');}
  for(const w of s.work){for(const key of ['fileTravel','bondFront'])if(w[key]!==undefined&&(!Number.isFinite(w[key])||w[key]<0||w[key]>1))throw Error('施工进度无效');for(const path of Object.values(w.paths||{}))if(!Array.isArray(path)||path.length>1500||path.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||v<0||v>1)))throw Error('工具轨迹记录无效');for(const arr of Object.values(w.fineCoverage||{}))if(!Array.isArray(arr)||arr.length>96||arr.some(i=>!Number.isInteger(i)||i<0||i>=96))throw Error('细部覆盖记录无效');for(const arr of Object.values(w.breaks||{}))if(!Array.isArray(arr)||arr.length>1500||arr.some(i=>!Number.isInteger(i)||i<0||i>=1500))throw Error('笔画记录无效');}

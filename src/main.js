@@ -1,7 +1,8 @@
 import './style.css';
 import {NailScene} from './scene.js';
 import {icon} from './icons.js';
-import {polishControls,bindPolish,patternControl} from './polish-ui.js';
+import {polishControls,bindPolish,patternControl,materialControls,bindMaterials} from './polish-ui.js';
+import {loadWallet} from './rewards.js';
 import {lookDesign} from './season.js';
 import {COLORS,SHAPES,FINISHES,DECOS,FINGERS,COMMISSIONS,uid,clone,clamp,createDesign,insideNail,constrainDeco,copyNail,requirements,History,saveDraft,loadDraft,saveWork,listWorks,openWork,validateDesign} from './state.js';
 
@@ -101,9 +102,9 @@ function renderPanel(){
    $$('[data-nudge]').forEach(b=>b.onclick=()=>mutate(()=>{const k=b.dataset.nudge;d.u+=k==='left'?-.025:k==='right'?.025:0;d.v+=k==='up'?.025:k==='down'?-.025:0;constrainDeco(n,d);}));
   }
  }else if(tab==='finish'){
-  p.innerHTML=panelHead('把光留在指尖','Polish & light','柔雾、镜泽，或一束会流动的猫眼光。同样的颜色，也有不同性格。')+`<div class="choices finish-choices">${FINISHES.map(([id,label])=>`<button class="choice ${n.finish===id?'active':''}" data-finish="${id}"><i class="finish-swatch ${id}"></i>${label}</button>`).join('')}</div>`+(n.finish==='catEye'?`<button class="wide-button ${tool==='magnet'?'primary':''}" id="magnet-tool">${icon('magnet')}${tool==='magnet'?'磁铁已启用 · 在甲面拖动':'使用磁铁'}</button>`+range('magnet-u','亮带位置',n.magnet.u,0,1,.01,`${Math.round(n.magnet.u*100)}%`)+range('magnet-angle','亮带方向',Math.round(n.magnet.angle*180/Math.PI),-180,180,1,`${Math.round(n.magnet.angle*180/Math.PI)}°`):'')+patternControl(n,'free-pattern')+polishControls(n)+`<p class="note">质感作用于整枚甲面。猫眼采用受控光带，随磁铁位置与观察角度变化；不是粒子物理模拟。</p>`;
+  p.innerHTML=panelHead('把光留在指尖','Polish & light','柔雾、镜泽，或一束会流动的猫眼光。同样的颜色，也有不同性格。')+`<div class="choices finish-choices">${FINISHES.map(([id,label])=>`<button class="choice ${n.finish===id?'active':''}" data-finish="${id}"><i class="finish-swatch ${id}"></i>${label}</button>`).join('')}</div>`+(n.finish==='catEye'?`<button class="wide-button ${tool==='magnet'?'primary':''}" id="magnet-tool">${icon('magnet')}${tool==='magnet'?'磁铁已启用 · 在甲面拖动':'使用磁铁'}</button>`+range('magnet-u','亮带位置',n.magnet.u,0,1,.01,`${Math.round(n.magnet.u*100)}%`)+range('magnet-angle','亮带方向',Math.round(n.magnet.angle*180/Math.PI),-180,180,1,`${Math.round(n.magnet.angle*180/Math.PI)}°`):'')+patternControl(n,'free-pattern')+polishControls(n)+materialControls(studioWallet())+`<p class="note">质感作用于整枚甲面。猫眼采用受控光带，随磁铁位置与观察角度变化；不是粒子物理模拟。</p>`;
   $$('[data-finish]').forEach(b=>b.onclick=()=>mutate(()=>{n.finish=b.dataset.finish;n.topcoat=n.finish==='matte'?'matte':'gloss';if(n.polish)n.polish.chrome=n.finish==='metal'?1:0;tool=n.finish==='catEye'?'magnet':'none';},{panel:true}));
-  $('#free-pattern').onchange=e=>mutate(()=>n.pattern=e.target.value||null,{panel:true});bindPolish(p,n,fn=>mutate(fn,{panel:true}));
+  $('#free-pattern').onchange=e=>mutate(()=>n.pattern=e.target.value||null,{panel:true});bindPolish(p,n,fn=>mutate(fn,{panel:true}));bindMaterials(p,n,studioWallet(),fn=>mutate(fn,{panel:true}));
   if(n.finish==='catEye'){$('#magnet-tool').onclick=()=>{tool=tool==='magnet'?'none':'magnet';renderPanel();updateStatus();};bindRange('magnet-u',v=>n.magnet.u=v,v=>`${Math.round(v*100)}%`);bindRange('magnet-angle',v=>n.magnet.angle=v*Math.PI/180,v=>`${v}°`);}
  }else{
   p.innerHTML=panelHead('换个角度看灵感','A closer look','左键拖动旋转，滚轮缩放。这里的操作只调整镜头，让你安心查看每个细节。')+`<button class="wide-button" id="reset-camera">重置当前镜头</button><div class="section"><div class="section-title">看得近一点</div><p class="note">点击下方任意手指，即可进入单指近景。选回「涂绘」或「装饰」继续创作。编辑时也可使用右键旋转。</p></div>`;
@@ -229,3 +230,5 @@ if(!loadSeen())welcome();else if(bootError)toast(bootError,10000);
 function loadSeen(){try{const seen=sessionStorage.getItem('nail-atelier-visited');sessionStorage.setItem('nail-atelier-visited','1');return seen;}catch{return false;}}
 // Read-only diagnostics used by browser tests; all creation actions are exercised through the UI.
 window.nailAtelier={get design(){return clone(design);},get active(){return active;},get action(){return action?.kind??null;},get view(){return view;},project:(i,u,v)=>scene.project(i,u,v),pick:(x,y)=>scene.pick(x,y),stats:()=>scene.stats(),get renderer(){return scene.renderer;},get scene(){return scene;}};
+
+function studioWallet(){try{return loadWallet();}catch{toast('工作室材料记录读取失败，原记录已保留。');return {purchases:[]};}}

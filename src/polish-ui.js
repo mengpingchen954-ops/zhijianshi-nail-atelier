@@ -1,4 +1,5 @@
 import {polishValues} from './season.js';
+import {SHOP,owns} from './studio.js';
 
 export function polishControls(n){
  const p=polishValues(n);
@@ -13,3 +14,5 @@ export function bindPolish(root,n,mutate){
  });
 }
 export function patternControl(n,id){return `<label class="pattern-control">图案叠加<select id="${id}" aria-label="图案叠加">${[['','留白'],['french','法式边'],['marble','晕纹'],['aura','中心光晕']].map(([v,t])=>`<option value="${v}" ${(n.pattern||'')===v?'selected':''}>${t}</option>`).join('')}</select></label>`;}
+export function materialControls(wallet){const items=SHOP.filter(i=>i.kind==='material'&&owns(wallet,i.id));return items.length?`<fieldset class="polish-controls"><legend>已解锁材料 · 当前指</legend>${items.map(i=>`<div><strong>${i.name}</strong><div class="material-colors">${i.colors.map(c=>`<button data-material-color="${c}" style="--swatch:${c}" aria-label="使用${i.name}颜色${c}"></button>`).join('')}<button data-material="${i.id}">使用配方</button></div></div>`).join('')}<small>色胶与配方分开应用，保留图案和装饰；顾客单仍需符合约定色系。</small></fieldset>`:'';}
+export function bindMaterials(root,n,wallet,mutate){root.querySelectorAll('[data-material]').forEach(b=>b.onclick=()=>{const item=SHOP.find(i=>i.id===b.dataset.material);if(!owns(wallet,item.id))return;mutate(()=>{n.finish=item.finish;n.topcoat='gloss';n.polish={...polishValues(n),...item.polish};});});root.querySelectorAll('[data-material-color]').forEach(b=>b.onclick=()=>mutate(()=>{n.base=b.dataset.materialColor;n.unpainted=false;}));}
