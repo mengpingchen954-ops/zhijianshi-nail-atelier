@@ -1,7 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {designCustomer} from './design-customer.mjs';
-const url=process.env.GAME_URL||'http://127.0.0.1:5186/';
+const url=process.env.GAME_URL||'http://127.0.0.1:5185/';
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1903,height:966}}),errors=[];page.on('pageerror',e=>errors.push(e.message));

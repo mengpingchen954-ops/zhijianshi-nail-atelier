@@ -9,8 +9,8 @@ const state=()=>page.evaluate(()=>JSON.parse(render_game_to_text()));
 async function point(i,u=.5,v=.5){return page.evaluate(({i,u,v})=>nailSalon.project(i,u,v),{i,u,v});}
 async function clickNail(i,u=.5,v=.5){const p=await point(i,u,v);await page.mouse.click(p.x,p.y);}
 async function brushNail(i,step){
- const coords=step==='file'?Array.from({length:18},(_,k)=>[k%2?.7:.3,.8]):Array.from({length:15},(_,k)=>[.2+((Math.floor(k/3)%2?2-k%3:k%3))*.3,.12+Math.floor(k/3)*.18]);
- let p=await point(i,...coords[0]);await page.mouse.move(p.x,p.y);await page.mouse.down();for(const uv of coords){p=await point(i,...uv);await page.mouse.move(p.x,p.y,{steps:2});}await page.mouse.up();
+ const coords=step==='file'?Array.from({length:18},(_,k)=>[k%2?.7:.3,.8]):step==='bond'?Array.from({length:24},(_,k)=>[.5,.06+k*.038]):Array.from({length:60},(_,k)=>[.12+(Math.floor(k/5)%2?4-k%5:k%5)*.19,.04+Math.floor(k/5)*.08]);
+ coords.unshift([.5,step==='file'?.8:.08]);let p=await point(i,...coords[0]);await page.mouse.move(p.x,p.y);await page.mouse.down();for(const uv of coords){p=await point(i,...uv);await page.mouse.move(p.x,p.y,{steps:2});}await page.mouse.up();
 }
 try{
  const response=await page.goto(url,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator('#open-book').click();
@@ -30,7 +30,7 @@ try{
     for(const hand of [...new Set(s.targets.map(i=>Math.floor(i/5)))]){
      const fresh=await state(),candidates=fresh.targets.filter(i=>Math.floor(i/5)===hand&&!fresh.progress[i].done.includes(step));if(!candidates.length)continue;
      const i=candidates[0];await page.locator('[data-finger="'+i+'"]').click();
-     if(step==='fit'){await page.locator('#suggest-tip').click();await clickNail(i);}
+     if(step==='fit'){await page.locator('#suggest-tip').click();let p=await point(i,.5,.62);await page.mouse.move(p.x,p.y);await page.mouse.down();p=await point(i,.5,.1);await page.mouse.move(p.x,p.y,{steps:12});await page.waitForTimeout(150);await page.mouse.up();}
      else if(step==='inspect'){await clickNail(i);}
      else if(step==='magnet'){await clickNail(i,.46,.5);await page.locator('#confirm-magnet').click();}
      else if(step==='decor'){const ds=await page.evaluate(i=>nailSalon.session.plan.nails[i].decorations,i);for(const d of ds.filter(a=>!a.hidden))await clickNail(i,d.u,d.v);}

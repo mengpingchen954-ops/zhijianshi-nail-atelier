@@ -18,8 +18,8 @@ export const STAGES={
  dust:{name:'扫净浮尘',short:'除尘',tool:'brush',hint:'轻刷甲面，扫掉刚刚修锉产生的粉尘。',sound:'brush'},
  base:{name:'涂配套底层',short:'底层',tool:'polish',hint:'刷过甲面各个区域，完成本次服务的底层。',sound:'paint'},
  build:{name:'本甲建构',short:'建构',tool:'gel',hint:'铺开建构胶，覆盖甲面；侧面查看顶点与厚薄，再送入灯中。',sound:'gel'},
- fit:{name:'逐指选片',short:'试片',tool:'tip',hint:'选择宽度与曲率合适的甲片，再点击甲面试贴确认。',sound:'tip'},
- bond:{name:'甲片贴合',short:'贴合',tool:'press',hint:'由指根向指尖平稳压合，覆盖甲面以排除贴合气泡。',sound:'gel'},
+ fit:{name:'逐指选片',short:'试片',tool:'tip',hint:'拿起候选甲片，移到甲根对齐并放下；两侧宽度和弧度都要合适。',sound:'tip'},
+ bond:{name:'甲片贴合',short:'贴合',tool:'press',hint:'从甲根开始，按住缓缓推向自由缘。透明甲片逐步落下，气泡向前排出。',sound:'gel'},
  cureBase:{name:'基础层固化',short:'照灯',tool:'lamp',hint:'基础层已就绪。整手进入固化灯，五指一起完成本轮固化。',sound:null,cure:true},
  color:{name:'按蓝图上色',short:'做款',tool:'polish',hint:'沿甲面涂布，蓝图中的颜色、法式或纹理会随刷动显现。',sound:'paint'},
  magnet:{name:'猫眼磁吸',short:'磁吸',tool:'magnet',hint:'移动磁铁调整亮带，方向滑杆控制斜度；满意后确认当前指。',sound:null},
@@ -53,21 +53,36 @@ export const stepId=s=>stepsFor(customer(s.client))[s.step];
 export const validCells=n=>Array.from({length:15},(_,i)=>({i,u:.2+(i%3)*.3,v:.12+Math.floor(i/3)*.18})).filter(p=>insideNail(n,p.u,p.v,.02));
 export function progress(s,index,step=stepId(s)){
  const w=s.work[index];if(w.done.includes(step))return 1;
+ if(step==='file')return w.fileTravel||0;
+ if(step==='bond')return w.bondFront||0;
+ if(w.fineCoverage?.[step])return Math.min(1,w.fineCoverage[step].length/(fineCells(s.plan.nails[index]).length*.94));
  const cells=validCells(s.plan.nails[index]),covered=w.coverage[step]||[];return Math.min(1,covered.length/Math.max(1,cells.length*.88));
 }
 export function complete(s,index,step=stepId(s)){const w=s.work[index];if(!w.done.includes(step))w.done.push(step);}
 export function stageDone(s){return targetsFor(s).every(i=>s.work[i].done.includes(stepId(s)));}
-export function workAt(s,index,u,v,distance=.1){
+// Fine spatial coverage follows the swept brush footprint, including between input events.
+export const fineCells=n=>Array.from({length:96},(_,i)=>({i,u:.08+(i%8)*.12,v:.04+Math.floor(i/8)*.08})).filter(p=>insideNail(n,p.u,p.v,.01));
+export function workAt(s,index,u,v,distance=.1,options={}){
  const step=stepId(s),w=s.work[index],n=s.plan.nails[index];if(s.phase!=='work'||!targetsFor(s).includes(index)||w.done.includes(step)||STAGES[step].cure||step==='finish')return false;
  if(step==='inspect'){complete(s,index);return true;}
- if(step==='fit'){const expectedW=(index%5===0?3:index%5===4?0:1)+(customer(s.client).width>1.1?1:0),expectedC=customer(s.client).curve>1.1?1:0;if(w.fitWidth!==expectedW||w.fitCurve!==expectedC)return false;complete(s,index);return true;}
+ if(step==='fit'){const expectedW=(index%5===0?3:index%5===4?0:1)+(customer(s.client).width>1.1?1:0),expectedC=customer(s.client).curve>1.1?1:0;if(!options.placing||distance<.12||v>.3||Math.abs(u-.5)>.2||w.fitWidth!==expectedW||w.fitCurve!==expectedC)return false;complete(s,index);return true;}
  if(step==='magnet'){w.magnet.u=clamp(u,.12,.88);return true;}
  if(step==='decor')return false;
- if(!insideNail(n,u,v)||distance<.005||step==='file'&&v<.62)return false;
- const paths=(w.paths??={})[step]??=((w.paths)[step]=[]);const last=paths.at(-1);if(paths.length<500&&(!last||Math.hypot(last[0]-u,last[1]-v)>.035))paths.push([u,v]);
+ if(!insideNail(n,u,v)||step==='file'&&v<.68)return false;
+ const paths=(w.paths??={})[step]??=((w.paths)[step]=[]),breaks=(w.breaks??={})[step]??=(w.breaks[step]=[]);
+ const last=paths.at(-1);
+ if(options.start||!last){if(paths.length<1500){breaks.push(paths.length);paths.push([u,v]);}if(step==='bond')w.bondStarted=v<.2;return false;}
+ const du=u-last[0],dv=v-last[1],travel=Math.hypot(du,dv);
+ if(distance<.003||travel<.003)return false;
+ if(paths.length<1500)paths.push([u,v]);
  const arr=w.coverage[step]??=[];
- if(step==='file'){w.fileTravel=Math.min(1,(w.fileTravel||0)+Math.min(distance,.2)*1.3);if(w.fileTravel>=1)complete(s,index);return true;}
- for(const p of validCells(n))if(Math.hypot(p.u-u,p.v-v)<.32&&!arr.includes(p.i))arr.push(p.i);
+ if(step==='file'){if(Math.abs(du)<Math.abs(dv)*.7)return false;w.fileTravel=Math.min(1,(w.fileTravel||0)+Math.min(Math.abs(du),.18)*.5);if(w.fileTravel>=1)complete(s,index);return true;}
+ if(step==='bond'){if(!w.bondStarted||Math.abs(u-.5)>.3||dv<0||v>(w.bondFront||0)+.24)return false;w.bondFront=Math.min(1,Math.max(w.bondFront||0,v/.92));if(w.bondFront>=1)complete(s,index);return true;}
+ const fine=(w.fineCoverage??={})[step]??=(w.fineCoverage[step]=[]),samples=Math.ceil(travel/.025);
+ for(let j=0;j<=samples;j++){const a=j/samples,cu=last[0]+du*a,cv=last[1]+dv*a;
+  for(const p of fineCells(n))if(((p.u-cu)/.13)**2+((p.v-cv)/.12)**2<1&&!fine.includes(p.i))fine.push(p.i);
+  for(const p of validCells(n))if(Math.hypot(p.u-cu,p.v-cv)<.2&&!arr.includes(p.i))arr.push(p.i);
+ }
  if(step==='build')w.build=progress(s,index,step)*.7;
  if(progress(s,index,step)>=1)complete(s,index);return true;
 }
@@ -81,22 +96,28 @@ export function nextStep(s){if(!stageDone(s))throw Error('请先完成本阶段�
 export function beginWork(s){validateDesign(s.plan);const missing=designRequirements(s).filter(r=>!r.ok);if(missing.length)throw Error(missing.slice(0,2).map(r=>r.label).join('；'));s.phase='work';s.step=0;}
 export function beginLamp(s,hand){
  const step=stepId(s);if(!STAGES[step].cure||s.lamp)throw Error('当前不能照灯');
- const indices=targetsFor(s).filter(i=>Math.floor(i/5)===hand&&!s.work[i].done.includes(step));if(!indices.length)throw Error('这只手已完成本轮固化');s.lamp={hand,remaining:4.5,indices};
+ const indices=targetsFor(s).filter(i=>Math.floor(i/5)===hand&&!s.work[i].done.includes(step));if(!indices.length)throw Error('这只手已完成本轮固化');s.lamp={hand,remaining:4.5,indices,phase:'enter',motion:0};
 }
-export function advanceLamp(s,seconds){if(!s.lamp)return false;s.lamp.remaining=Math.max(0,s.lamp.remaining-clamp(seconds,0,10));if(s.lamp.remaining>0)return false;for(const i of s.lamp.indices)complete(s,i);s.lamp=null;return true;}
+export function advanceLamp(s,seconds){if(!s.lamp)return false;const l=s.lamp;let dt=clamp(seconds,0,10);l.phase??='cure';l.motion??=0;
+ if(l.phase==='enter'){const used=Math.min(dt,.7-l.motion);l.motion+=used;dt-=used;if(l.motion<.7)return false;l.phase='cure';l.motion=0;}
+ if(l.phase==='cure'){const used=Math.min(dt,l.remaining);l.remaining-=used;dt-=used;if(l.remaining>0)return false;l.phase='exit';l.motion=0;}
+ if(l.phase==='exit'){l.motion+=dt;if(l.motion<.55)return false;for(const i of l.indices)complete(s,i);s.lamp=null;return true;}return false;
+}
 export function viewDesign(s){
  const c=customer(s.client),d=clone(s.plan),activeTargets=targetsFor(s),id=stepId(s);
  d.nails.forEach((n,i)=>{const w=s.work[i];if(!activeTargets.includes(i))return;const ready=key=>w.done.includes(key),color=ready('color'),pre=ready('remove')||!c.old;
  n.width=c.width*(1+((i*7)%5-2)*.025);n.curve=c.curve;n.build=ready('build')?.7:w.build;
  const fileFraction=ready('file')?1:w.fileTravel||0,goalLength=c.route==='natural'?s.plan.nails[i].length:.45;n.length=w.initialLength+(goalLength-w.initialLength)*fileFraction+(c.old==='tips'&&!ready('remove')?.35:0);n.shapeBlend=fileFraction;
- if(ready('bond'))n.length=s.plan.nails[i].length;
- if(ready('bond'))n.shapeBlend=1;
+ const bond=ready('bond')?1:w.bondFront||0;
+ if(id==='bond'||ready('bond')){n.length=s.plan.nails[i].length;n.shapeBlend=1;}
+ if(c.route!=='natural'&&!ready('bond')&&id!=='bond')n.shape='round';
  n.decorations=ready('decor')?n.decorations:n.decorations.filter((_,k)=>(w.coverage.decor||[]).includes(k));
  n.magnet=clone(w.magnet);n.surface={undercoat:progress(s,i,'base'),paths:w.paths||{},old:pre?null:c.old,oldAmount:w.old,oldColor:c.old==='gel'?'#a9445c':'#cf91a8',remove:w.coverage.remove||[],dirty:ready('clean')?0:w.dirty,dust:ready('file')&&!ready('dust')?1:0,cleared:w.coverage.clean||[],dusted:w.coverage.dust||[],revealed:w.coverage.color||[],target:clone(s.plan.nails[i]),color,ghost:id==='decor'?s.plan.nails[i].decorations.filter((_,k)=>!(w.coverage.decor||[]).includes(k)):[],bonding:id==='bond'&&!ready('bond'),bond:w.coverage.bond||[]};
+ n.surface.activeStep=id;n.surface.breaks=w.breaks||{};n.surface.fine=w.fineCoverage||{};n.surface.bondFront=bond;n.surface.dust=!ready('dust')?fileFraction:0;n.surface.top=progress(s,i,'top');
  if(!color){n.base='#e8b7ad';n.gradient=null;n.pattern=null;n.strokes=[];n.finish=ready('color')?c.finish:'gloss';}
  if(color)n.finish=s.plan.nails[i].finish;
   n.topcoat=ready('top')?s.plan.nails[i].topcoat:'gloss';
-  if(id==='fit'||id==='bond'&&!ready('bond')){const expected=(i%5===0?3:i%5===4?0:1)+(c.width>1.1?1:0),sizes=[.74,.88,1,1.14,1.28];n.tipPreview={width:n.width*sizes[w.fitWidth]/sizes[expected],curve:w.fitCurve?1.2:.92,length:s.plan.nails[i].length,shape:s.plan.nails[i].shape};}
+  if(id==='fit'||id==='bond'&&!ready('bond')){const expected=(i%5===0?3:i%5===4?0:1)+(c.width>1.1?1:0),sizes=[.74,.88,1,1.14,1.28];n.tipPreview={width:id==='bond'?n.width:n.width*sizes[w.fitWidth]/sizes[expected],curve:w.fitCurve?1.2:.92,length:s.plan.nails[i].length,shape:s.plan.nails[i].shape,hover:id==='fit'&&!ready('fit'),front:id==='fit'&&ready('fit')?1:bond};}
  });return d;
 }
 export function designRequirements(s){
@@ -121,8 +142,8 @@ export function evaluateService(s){
 export function validateSession(value){
  const s=clone(value);if(!s||s.version!==2||!customer(s.client)||!['plan','work','result'].includes(s.phase)||!Number.isInteger(s.step)||s.step<0||s.step>=stepsFor(customer(s.client)).length||!Array.isArray(s.work)||s.work.length!==10)throw Error('服务存档格式无效');
  s.plan=validateDesign(s.plan);for(const w of s.work){if(!w||!Array.isArray(w.done)||w.done.length>20||!w.done.every(k=>Object.hasOwn(STAGES,k))||!w.coverage||typeof w.coverage!=='object'||!Number.isFinite(w.initialLength)||w.initialLength<.45||w.initialLength>1.3||!Number.isFinite(w.build)||w.build<0||w.build>1||!w.magnet||!Number.isFinite(w.magnet.u)||w.magnet.u<0||w.magnet.u>1||!Number.isFinite(w.magnet.angle)||Math.abs(w.magnet.angle)>Math.PI||![0,1,2,3,4].includes(w.fitWidth)||![0,1].includes(w.fitCurve)||!Number.isFinite(w.dirty)||w.dirty<0||w.dirty>1||!Number.isFinite(w.old)||w.old<0||w.old>1)throw Error('手指施工记录无效');for(const arr of Object.values(w.coverage))if(!Array.isArray(arr)||arr.length>30||!arr.every(v=>Number.isInteger(v)&&v>=0&&v<30))throw Error('施工覆盖记录无效');}
- for(const w of s.work){if(w.fileTravel!==undefined&&(!Number.isFinite(w.fileTravel)||w.fileTravel<0||w.fileTravel>1))throw Error('修形进度无效');for(const path of Object.values(w.paths||{}))if(!Array.isArray(path)||path.length>500||path.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||v<0||v>1)))throw Error('工具轨迹记录无效');}
- if(s.lamp&&(!Number.isFinite(s.lamp.remaining)||![0,1].includes(s.lamp.hand)||!Array.isArray(s.lamp.indices)||s.lamp.indices.some(i=>!Number.isInteger(i)||i<0||i>9)))throw Error('固化记录无效');return s;
+ for(const w of s.work){for(const key of ['fileTravel','bondFront'])if(w[key]!==undefined&&(!Number.isFinite(w[key])||w[key]<0||w[key]>1))throw Error('施工进度无效');for(const path of Object.values(w.paths||{}))if(!Array.isArray(path)||path.length>1500||path.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||v<0||v>1)))throw Error('工具轨迹记录无效');for(const arr of Object.values(w.fineCoverage||{}))if(!Array.isArray(arr)||arr.length>96||arr.some(i=>!Number.isInteger(i)||i<0||i>=96))throw Error('细部覆盖记录无效');for(const arr of Object.values(w.breaks||{}))if(!Array.isArray(arr)||arr.length>1500||arr.some(i=>!Number.isInteger(i)||i<0||i>=1500))throw Error('笔画记录无效');}
+ if(s.lamp&&(!Number.isFinite(s.lamp.remaining)||s.lamp.remaining<0||s.lamp.remaining>4.5||![0,1].includes(s.lamp.hand)||s.lamp.phase!==undefined&&!['enter','cure','exit'].includes(s.lamp.phase)||s.lamp.motion!==undefined&&(!Number.isFinite(s.lamp.motion)||s.lamp.motion<0||s.lamp.motion>10)||!Array.isArray(s.lamp.indices)||s.lamp.indices.length<1||s.lamp.indices.length>5||s.lamp.indices.some(i=>!Number.isInteger(i)||i<0||i>9||Math.floor(i/5)!==s.lamp.hand)))throw Error('固化记录无效');return s;
 }
 export function loadSession(storage=localStorage){const raw=storage.getItem(SESSION_KEY);if(!raw)return null;const s=validateSession(JSON.parse(raw));if(s.phase==='plan'&&!s.planningVersion){const visual=n=>JSON.stringify([n.shape,n.length,n.base,n.finish,n.pattern,n.gradient,n.decorations.map(d=>[d.type,d.u,d.v,d.rotation,d.scale,!!d.hidden,!!d.locked]),n.strokes]);const reference=targetDesign(customer(s.client));if(s.plan.nails.every((n,i)=>visual(n)===visual(reference.nails[i])))s.plan=blankPlan(customer(s.client));s.planningVersion=1;}return s;}
 export function saveSession(s,storage=localStorage){const value=validateSession(s);storage.setItem(SESSION_KEY,JSON.stringify(value));}

@@ -2,17 +2,33 @@ import fs from 'node:fs';
 import path from 'node:path';
 const out=path.resolve('public/audio');fs.mkdirSync(out,{recursive:true});
 const rate=32000;
-function wav(name,duration,render){const size=Math.floor(duration*rate),b=Buffer.alloc(44+size*2);b.write('RIFF');b.writeUInt32LE(36+size*2,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(size*2,40);let seed=91,low=0,slow=0;const noise=()=>{seed=(seed*16807)%2147483647;return seed/2147483647*2-1;};for(let i=0;i<size;i++){const r=noise();low+=.14*(r-low);slow+=.015*(r-slow);const v=render(i/rate,r,low,slow,i);b.writeInt16LE(Math.max(-32767,Math.min(32767,Math.round(v*26000))),44+i*2);}fs.writeFileSync(path.join(out,name+'.wav'),b);}
-const tones={file:[.8,.1],brush:[.25,.22],wipe:[.18,.5],paint:[.09,.6],gel:[.1,.9],drill:[.38,.15],fan:[.03,.8]};
-for(const [name,[grain,body]]of Object.entries(tones))wav(name,3,(t,n,l,s)=>{const pulse=.5+.5*Math.sin(t*Math.PI*2*(name==='file'?7:3.333));const harmonic=name==='drill'?Math.sin(t*2*Math.PI*195)*.045:0;return (n*grain*.12+l*body*.45+s*.15+harmonic)*(.5+pulse*.5);});
+function wav(name,duration,render,seam=false){const size=Math.floor(duration*rate),b=Buffer.alloc(44+size*2);b.write('RIFF');b.writeUInt32LE(36+size*2,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(size*2,40);let seed=91+name.split('').reduce((a,c)=>a+c.charCodeAt(0),0),low=0,slow=0;const noise=()=>{seed=(seed*16807)%2147483647;return seed/2147483647*2-1;};for(let i=0;i<size;i++){const r=noise();low+=.14*(r-low);slow+=.015*(r-slow);const t=i/rate,edge=seam?Math.min(1,t/.012,(duration-t)/.012):1,v=render(t,r,low,slow,i)*edge;b.writeInt16LE(Math.max(-32767,Math.min(32767,Math.round(v*26000))),44+i*2);}fs.writeFileSync(path.join(out,name+'.wav'),b);}
+const sin=(t,f)=>Math.sin(t*Math.PI*2*f);
+// Each material has a separate excitation spectrum and microstructure.
+const materials={
+ file:(t,n,l)=>{const grain=Math.max(0,sin(t,37))**8;return (n-l)*(.095+.085*grain)+l*.23+sin(t,1180)*grain*.024;},
+ brush:(t,n,l,s)=>{const bristle=Math.max(0,sin(t,91)+sin(t,137))**5;return (n-l)*.018+l*.15+s*.11+Math.min(2,bristle)*n*.018;},
+ wipe:(t,n,l,s)=>l*.3*(.45+.55*sin(t,9)**2)+s*.22+(n-l)*.009,
+ paint:(t,n,l,s)=>l*.18+s*.35+sin(t,190)*s*.1+(n-l)*.006,
+ gel:(t,n,l,s)=>s*.54+l*.09+sin(t,76)*s*.25+Math.max(0,sin(t,23))**12*l*.12,
+ drill:(t,n,l)=>sin(t,183)*.04+sin(t,366)*.018+sin(t,1098)*.013+n*.035*(.65+.35*sin(t,61)**2)+l*.05,
+ fan:(t,n,l,s)=>s*.13+l*.065+sin(t,96)*.006+sin(t,192)*.002
+};
+for(const [name,render]of Object.entries(materials))wav(name,4,render,true);
 wav('room',3,t=>Math.sin(t*2*Math.PI*60)*.003+Math.sin(t*2*Math.PI*120)*.0006);
-for(const name of ['pick','cap','tip','sticker','jewel','snip','camera','done','error'])for(let k=0;k<3;k++)wav(name+'-'+k,name==='sticker'?.5:.34,(t,n,l)=>{
+for(const name of ['pick','cap','tip','sticker','jewel','snip','camera','done','error','lamp','stroke'])for(let k=0;k<3;k++)wav(name+'-'+k,name==='sticker'?.5:.34,(t,n,l,s)=>{
  const pitch=1+k*.035;
  if(name==='sticker')return (n*.12+l*.6)*Math.sin(Math.min(1,t/.5)*Math.PI)*(.4+.6*Math.sin(t*83)**2);
  if(name==='done')return (Math.sin(t*2*Math.PI*880*pitch)*Math.exp(-t*15)+Math.sin(t*2*Math.PI*1320)*Math.exp(-Math.max(0,t-.08)*22)*(t>.08?1:0))*.13;
  if(name==='error')return Math.sin(t*2*Math.PI*310)*Math.exp(-t*18)*.1;
- const tick=t<.006?n*.2:0,body=(name==='jewel'?1200:name==='cap'?570:name==='tip'?800:380)*pitch;
- return tick+(Math.sin(t*2*Math.PI*body)+Math.sin(t*2*Math.PI*body*2.37)*.4)*Math.exp(-t*(name==='jewel'?35:60))*.2+l*Math.exp(-t*40)*.3;
+ if(name==='stroke')return (n*.045+l*.18)*Math.sin(Math.min(1,t/.13)*Math.PI)*Math.exp(-t*21);
+ if(name==='tip'){const bend=Math.max(0,sin(t,17))**12;return l*.28*Math.exp(-t*17)+(sin(t,720*pitch)*.045+sin(t,1930*pitch)*.025)*Math.exp(-t*42)+n*.035*bend*Math.exp(-t*12);}
+ if(name==='cap')return n*.24*Math.exp(-t*230)+l*.38*Math.exp(-t*60)+sin(t,440*pitch)*.018*Math.exp(-t*70)+(t>.065?n*.12*Math.exp(-(t-.065)*250):0);
+ if(name==='lamp')return n*.16*Math.exp(-t*240)+l*.24*Math.exp(-t*80)+(t>.06&&t<.15?sin(t,1800)*Math.sin((t-.06)/.09*Math.PI)*.025:0);
+ if(name==='camera')return (n*.22+l*.35)*Math.exp(-t*90)+(t>.075?(n*.15+l*.25)*Math.exp(-(t-.075)*100):0);
+ if(name==='snip')return (n*.28+sin(t,2700)*.04)*Math.exp(-t*210)+l*.2*Math.exp(-t*55);
+ const tick=n*.17*Math.exp(-t*280),body=(name==='jewel'?2200:340)*pitch;
+ return tick+(sin(t,body)+sin(t,body*2.37)*.4)*Math.exp(-t*(name==='jewel'?70:120))*.055+l*Math.exp(-t*60)*.23;
 });
 wav('music',24,(t)=>{const chords=[[174.614,220,261.626],[146.832,196,246.942],[164.814,220,261.626],[130.813,174.614,220]],section=Math.floor(t/6),local=t%6,envelope=Math.sin(local/6*Math.PI)**2;return chords[section].reduce((v,f,i)=>v+Math.sin(2*Math.PI*f*t)*.022*(1+.18*Math.sin(t*2*Math.PI*.2+i)),0)*envelope;});
 fs.writeFileSync(path.join(out,'LICENSE.txt'),'All audio in this folder is original procedural foley and music created for The Little Nail Atelier, 2026. Generated by scripts/make-audio.mjs. No third-party recordings. Not recorded real-world tools. Project author may use, modify and distribute with this game.\n');
