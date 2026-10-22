@@ -10,6 +10,7 @@
     "test": "node --test tests/state.test.js tests/service.test.js",
     "test:salon": "node tests/salon-playthrough.mjs",
     "test:salon:edges": "node tests/salon-edges.mjs",
+    "test:audio": "node tests/salon-audio.mjs",
     "audio:build": "node scripts/make-audio.mjs",
     "test:browser": "node tests/ui-playthrough.mjs",
     "test:modules": "node tests/playthrough.mjs",

@@ -3,8 +3,9 @@ import path from 'node:path';
 const out=path.resolve('public/audio');fs.mkdirSync(out,{recursive:true});
 const rate=32000;
 function wav(name,duration,render){const size=Math.floor(duration*rate),b=Buffer.alloc(44+size*2);b.write('RIFF');b.writeUInt32LE(36+size*2,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(size*2,40);let seed=91,low=0,slow=0;const noise=()=>{seed=(seed*16807)%2147483647;return seed/2147483647*2-1;};for(let i=0;i<size;i++){const r=noise();low+=.14*(r-low);slow+=.015*(r-slow);const v=render(i/rate,r,low,slow,i);b.writeInt16LE(Math.max(-32767,Math.min(32767,Math.round(v*26000))),44+i*2);}fs.writeFileSync(path.join(out,name+'.wav'),b);}
-const tones={file:[.8,.1],brush:[.25,.22],wipe:[.18,.5],paint:[.09,.6],gel:[.1,.9],drill:[.38,.15],fan:[.03,.8],room:[.005,.9]};
+const tones={file:[.8,.1],brush:[.25,.22],wipe:[.18,.5],paint:[.09,.6],gel:[.1,.9],drill:[.38,.15],fan:[.03,.8]};
 for(const [name,[grain,body]]of Object.entries(tones))wav(name,3,(t,n,l,s)=>{const pulse=.5+.5*Math.sin(t*Math.PI*2*(name==='file'?7:3.333));const harmonic=name==='drill'?Math.sin(t*2*Math.PI*195)*.045:0;return (n*grain*.12+l*body*.45+s*.15+harmonic)*(.5+pulse*.5);});
+wav('room',3,t=>Math.sin(t*2*Math.PI*60)*.003+Math.sin(t*2*Math.PI*120)*.0006);
 for(const name of ['pick','cap','tip','sticker','jewel','snip','camera','done','error'])for(let k=0;k<3;k++)wav(name+'-'+k,name==='sticker'?.5:.34,(t,n,l)=>{
  const pitch=1+k*.035;
  if(name==='sticker')return (n*.12+l*.6)*Math.sin(Math.min(1,t/.5)*Math.PI)*(.4+.6*Math.sin(t*83)**2);
