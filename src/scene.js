@@ -94,11 +94,11 @@ export class NailScene{
  makeHands(){
   const lengths=[1.13,1.61,1.79,1.66,1.29],xs=[-.8,-.51,-.17,.18,.49],r=[.24,.19,.195,.18,.154];
   for(let h=0;h<2;h++){
-   const group=new T.Group();group.position.set(h?1.48:-1.48,.12,.72);group.rotation.y=h?-.11:.11;this.scene.add(group);this.hands.push(group);
+    const group=new T.Group();group.position.set(h?1.48:-1.48,.12,.72);group.rotation.y=h?-.11:.11;this.scene.add(group);this.hands.push(group);
    const skinMesh=this.handSurface(h,lengths,xs,r);group.add(skinMesh);
    const cuff=this.mesh(new T.LatheGeometry([new T.Vector2(.43,0),new T.Vector2(.48,.03),new T.Vector2(.49,.09),new T.Vector2(.49,.75)],48),new T.MeshStandardMaterial({color:'#c9b7ae',roughness:.95,bumpMap:this.roomMaterials.pad.bumpMap,bumpScale:.008,side:T.DoubleSide}),V(0,-.01,1.52),V(1,1,.43),group);cuff.rotation.x=Math.PI/2;
    for(let f=0;f<5;f++){
-    const fg=new T.Group();const side=h?-1:1;fg.position.set(xs[f]*side*(f===0?.82:1),f===0?-.07:0,f===0?.27:-.53);fg.rotation.y=(f===0?.68:(f-2)*-.028)*side;group.add(fg);
+    const fg=new T.Group();const side=h?1:-1;fg.position.set(xs[f]*side*(f===0?.82:1),f===0?-.07:0,f===0?.27:-.53);fg.rotation.y=(f===0?.68:(f-2)*-.028)*side;group.add(fg);
     for(const t of [.32,.58]){const rr=r[f]*(1-.22*t);for(const offset of [0,.032]){const pts=[];for(let j=0;j<=12;j++){const x=(j/12-.5)*rr*1.3;pts.push(V(x,Math.sqrt(rr*rr-x*x)*.8+.016*Math.sin(t*Math.PI)+.001,-lengths[f]*t+offset+.013*(1-Math.pow(x/rr,2))));}const crease=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),16,.0012,3,false),new T.MeshStandardMaterial({color:'#b88976',roughness:1,transparent:true,opacity:.26}));fg.add(crease);}}
     const nailGroup=new T.Group();nailGroup.position.set(0,r[f]*.63-(f===0?.034:.052),-lengths[f]+.43);nailGroup.rotation.x=-.035;fg.add(nailGroup);
     const mat=new T.MeshPhysicalMaterial({color:'#fff',roughness:.17,clearcoat:1,clearcoatRoughness:.1,side:T.DoubleSide});
@@ -111,7 +111,7 @@ export class NailScene{
  }
  handSurface(hand,lengths,xs,radii){
   // One smooth implicit surface joins wrist, palm, thenar pad and fingers without model seams.
-  const resolution=88,mc=new MarchingCubes(resolution,this.skin,true,false,65000),sx=1.65,sy=.46,sz=2.5,cz=-.3,side=hand?-1:1;
+  const resolution=88,mc=new MarchingCubes(resolution,this.skin,true,false,65000),sx=1.65,sy=.46,sz=2.5,cz=-.3,side=hand?1:-1;
   const ell=(x,y,z,a,b,c)=>(Math.sqrt(x*x/(a*a)+y*y/(b*b)+z*z/(c*c))-1)*Math.min(a,b,c);
   const smin=(a,b,k)=>{const h=Math.max(k-Math.abs(a-b),0)/k;return Math.min(a,b)-h*h*k*.25;};
   const fingers=lengths.map((l,f)=>{const angle=(f===0?.68:(f-2)*-.028)*side;return {l,r:radii[f],x:xs[f]*side*(f===0?.82:1),y:f===0?-.07:0,z:f===0?.27:-.53,c:Math.cos(angle),s:Math.sin(angle)};});

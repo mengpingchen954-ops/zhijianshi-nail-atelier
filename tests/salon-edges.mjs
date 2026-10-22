@@ -8,6 +8,8 @@ const check=(name,ok)=>{assert.ok(ok,name);checks.push(name);console.log('PASS',
 async function enter(page,id='lin'){page.on('pageerror',e=>{errors.push(e.message);console.error('PAGEERROR',e.stack);});await page.goto(url,{waitUntil:'networkidle'});await page.locator('#open-book').click();await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();}
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});await enter(page);
+ const orientation=await page.evaluate(()=>{const s=nailSalon.scene;s.scene.updateMatrixWorld(true);const x=i=>s.rec[i].group.matrixWorld.elements[12];return {leftThumb:x(0),leftLittle:x(4),rightThumb:x(5),rightLittle:x(9)};});
+ check('thumbs face inward in the paired-hand view',orientation.leftThumb>orientation.leftLittle&&orientation.rightThumb<orientation.rightLittle);
  await page.locator('[data-sticker="heart"]').click();let box=await page.locator('[data-plan="2"]').boundingBox();await page.mouse.click(box.x+box.width*.5,box.y+box.height*.48);
  check('sticker is placed in the selected 2D nail',await page.evaluate(()=>nailSalon.session.plan.nails[2].decorations.some(d=>d.type==='heart')));
  await page.locator('#deco-angle').fill('45');await page.locator('#deco-angle').dispatchEvent('change');check('sticker rotation updates the actual blueprint',await page.evaluate(()=>Math.abs(nailSalon.session.plan.nails[2].decorations[0].rotation-Math.PI/4)<.001));
