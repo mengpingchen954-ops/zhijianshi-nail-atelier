@@ -16,8 +16,10 @@ const materials={
 };
 for(const [name,render]of Object.entries(materials))wav(name,4,render,true);
 wav('room',3,t=>Math.sin(t*2*Math.PI*60)*.003+Math.sin(t*2*Math.PI*120)*.0006);
-for(const name of ['pick','cap','tip','sticker','jewel','snip','camera','done','error','lamp','stroke'])for(let k=0;k<3;k++)wav(name+'-'+k,name==='sticker'?.5:.34,(t,n,l,s)=>{
+for(const name of ['pick','cap','tip','sticker','jewel','snip','camera','done','error','lamp','stroke','coin','reward'])for(let k=0;k<3;k++)wav(name+'-'+k,name==='reward'?.8:name==='sticker'?.5:.34,(t,n,l,s)=>{
  const pitch=1+k*.035;
+ if(name==='coin')return (sin(t,1850*pitch)*.13+sin(t,3260*pitch)*.06+sin(t,4870)*.025)*Math.exp(-t*22)+n*.08*Math.exp(-t*180);
+ if(name==='reward')return [660,830.61,987.77,1320].reduce((v,f,j)=>{const a=t-j*.11;return v+(a>=0?sin(a,f*pitch)*Math.exp(-a*7)*.08:0);},0);
  if(name==='sticker')return (n*.12+l*.6)*Math.sin(Math.min(1,t/.5)*Math.PI)*(.4+.6*Math.sin(t*83)**2);
  if(name==='done')return (Math.sin(t*2*Math.PI*880*pitch)*Math.exp(-t*15)+Math.sin(t*2*Math.PI*1320)*Math.exp(-Math.max(0,t-.08)*22)*(t>.08?1:0))*.13;
  if(name==='error')return Math.sin(t*2*Math.PI*310)*Math.exp(-t*18)*.1;

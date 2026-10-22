@@ -1,3 +1,4 @@
+import {consultCustomer} from './consult-customer.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {createSession,targetDesign,customer,beginWork,stepsFor,SESSION_KEY} from '../src/service.js';
@@ -19,7 +20,7 @@ try{
  await page.locator('#settings').click();assert.equal(await page.locator('#music-track').inputValue(),'3');assert.equal(await page.locator('[data-volume="music"]').inputValue(),'0.24');
  await page.locator('#music-track').selectOption('4');assert.equal(await page.locator('#dock-track').inputValue(),'4');await page.locator('.close-modal').click();
  await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('#dock-track').inputValue(),'4');assert.equal(await page.locator('#dock-volume-value').innerText(),'24%');await page.locator('#dock-toggle').click();await playing();
- await page.locator('#open-book').click();await page.locator('[data-client="xia"]').click();await page.locator('#accept-client').click();
+ await page.locator('#open-book').click();await page.locator('[data-client="xia"]').click();await page.locator('#accept-client').click();await consultCustomer(page);
  const before=await page.evaluate(()=>JSON.stringify(nailSalon.session.plan));await page.locator('#dock-next').click();await playing();assert.equal(await page.evaluate(()=>JSON.stringify(nailSalon.session.plan)),before);
  await page.screenshot({path:'artifacts/music-dock-desktop.png'});
  for(const width of [1024,390,320]){

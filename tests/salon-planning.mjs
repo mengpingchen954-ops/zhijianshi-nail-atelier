@@ -1,3 +1,4 @@
+import {consultCustomer} from './consult-customer.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {designCustomer} from './design-customer.mjs';
@@ -5,7 +6,7 @@ const url=process.env.GAME_URL||'http://127.0.0.1:5185/';
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1903,height:966}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(url,{waitUntil:'networkidle'});await page.locator('#open-book').click();await page.locator('[data-client="qiao"]').click();await page.locator('#accept-client').click();
+ await page.goto(url,{waitUntil:'networkidle'});await page.locator('#open-book').click();await page.locator('[data-client="qiao"]').click();await page.locator('#accept-client').click();await consultCustomer(page);
  const blank=()=>page.evaluate(()=>nailSalon.session.plan.nails.every(n=>n.unpainted&&n.decorations.length===0&&!n.pattern&&!n.gradient));
  assert.ok(await blank());assert.equal(await page.locator('#reset-reference').count(),0);assert.ok(await page.locator('#mini-reference .reference-card').isVisible());
  await page.screenshot({path:'artifacts/v2-blank-plan.png'});await page.locator('#confirm-plan').click();assert.equal(await page.evaluate(()=>nailSalon.session.phase),'plan');

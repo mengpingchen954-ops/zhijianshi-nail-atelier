@@ -11,7 +11,7 @@ async function stage(step,id='lin',mobile=false){
  for(const w of s.work){w.done=stepsFor(customer(id)).slice(0,s.step);if(w.done.includes('file'))w.fileTravel=1;}
  await page.close();page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(({key,s})=>{localStorage.setItem(key,JSON.stringify(s));localStorage.setItem('nail-audio-v3',JSON.stringify({tools:.7,ui:.45,music:0,room:0,muted:false}));},{key:SESSION_KEY,s});
- await page.goto(url,{waitUntil:'networkidle'});await page.locator('#resume').click();await page.waitForFunction(()=>Object.keys(nailSalon.sound.buffers).length===41);
+ await page.goto(url,{waitUntil:'networkidle'});await page.locator('#resume').click();await page.waitForFunction(()=>Object.keys(nailSalon.sound.buffers).length===47);
  await page.locator('[data-finger="0"]').click();await page.waitForTimeout(100);
 }
 const point=(u,v)=>page.evaluate(({u,v})=>nailSalon.project(0,u,v),{u,v});

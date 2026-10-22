@@ -1,3 +1,4 @@
+import {consultCustomer} from './consult-customer.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,11 +17,11 @@ try{
  const response=await page.goto(url,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator('#open-book').click();
  for(const id of clients){
   if(!(await page.locator('[data-client="'+id+'"]').isVisible()))await page.locator('#home').click();
-  await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();await designCustomer(page,id);await page.locator('#confirm-plan').click();
+  await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();await consultCustomer(page);await designCustomer(page,id);await page.locator('#confirm-plan').click();
   let guard=0;
   while((await state()).mode==='work'&&guard++<30){
    const s=await state(),step=s.step;console.log(id,step);
-   if(step==='finish'){await page.locator('#deliver').click();break;}
+   if(step==='finish'){await page.locator('#deliver').click();await page.locator('#claim-reward').click();await page.waitForTimeout(2600);break;}
    if(step.startsWith('cure')){
     for(const hand of [...new Set(s.targets.map(i=>Math.floor(i/5)))]){await page.locator('[data-lamp="'+hand+'"]').click();if(id==='lin'&&step==='cureBase'&&hand===0){await page.locator('#interrupt-lamp').click();assert.equal((await state()).progress[0].done.includes(step),false);await page.locator('[data-lamp="0"]').click();checks.push('interrupted curing is not marked complete');}
      if(id==='qiao'&&step==='cureBase'&&hand===0)await page.screenshot({path:'artifacts/v2-lamp.png'});

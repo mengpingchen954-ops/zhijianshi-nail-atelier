@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 5184",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5185",
-    "test": "node --test tests/state.test.js tests/service.test.js",
+    "test": "node --test tests/state.test.js tests/service.test.js tests/rewards.test.js",
     "test:salon": "node tests/salon-playthrough.mjs",
     "test:salon:edges": "node tests/salon-edges.mjs",
     "test:audio": "node tests/salon-audio.mjs",
@@ -19,7 +19,8 @@
     "test:interactions": "node tests/salon-interactions.mjs",
     "test:music": "node tests/salon-music.mjs",
     "test:length": "node tests/salon-length.mjs",
-    "test:music:dock": "node tests/salon-music-dock.mjs"
+    "test:music:dock": "node tests/salon-music-dock.mjs",
+    "test:customers": "node tests/salon-customers.mjs"
   },
   "dependencies": {
     "three": "^0.186.1",

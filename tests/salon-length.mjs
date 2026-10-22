@@ -1,9 +1,10 @@
+import {consultCustomer} from './consult-customer.mjs';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser=await chromium.launch({channel:'chrome',headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 try{
- await page.goto(process.env.GAME_URL||'http://127.0.0.1:5185/',{waitUntil:'networkidle'});await page.locator('#open-book').click();await page.locator('[data-client="su"]').click();await page.locator('#accept-client').click();
+ await page.goto(process.env.GAME_URL||'http://127.0.0.1:5185/',{waitUntil:'networkidle'});await page.locator('#open-book').click();await page.locator('[data-client="su"]').click();await page.locator('#accept-client').click();await consultCustomer(page);
  const shape=page.locator('.design-checklist li').filter({hasText:'十指改为方圆形'}),length=page.locator('.design-checklist li').filter({hasText:'长度适合顾客'});
  assert.ok((await shape.innerText()).includes('0/10'));assert.ok((await length.innerText()).includes('10/10'));
  await shape.locator('[data-fix-finger="0"]').click();assert.equal(await page.evaluate(()=>nailSalon.active),0);await page.locator('#plan-shape').selectOption('square');assert.ok((await shape.innerText()).includes('1/10'));

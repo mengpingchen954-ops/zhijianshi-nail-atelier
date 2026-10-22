@@ -6,7 +6,7 @@ try{
  const page=await browser.newPage();
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#open-book').click();
- await page.waitForFunction(()=>Object.keys(nailSalon.sound.buffers).length===41);
+ await page.waitForFunction(()=>Object.keys(nailSalon.sound.buffers).length===47);
  assert.equal(await page.evaluate(()=>nailSalon.sound.channels.room),0,'new players have no continuous room noise');
  const levels=await page.evaluate(async()=>{
   const sound=nailSalon.sound,analyser=sound.ctx.createAnalyser();analyser.fftSize=2048;sound.master.connect(analyser);

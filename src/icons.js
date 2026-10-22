@@ -20,6 +20,7 @@ const paths={
  pause:'<path d="M8 4v16M16 4v16"/>',
  previous:'<path d="M5 5v14m14-14L8 12l11 7Z"/>',
  next:'<path d="M19 5v14M5 5l11 7-11 7Z"/>',
+ chat:'<path d="M4 4h16v12H9l-5 4ZM8 8h8M8 12h5"/>',
  save:'<path d="M3 3h15l3 3v15H3ZM7 3v6h9V3M7 21v-8h10v8"/>',
  plus:'<path d="M12 4v16M4 12h16"/>',
  heart:'<path d="M12 21S1 14 2 7c1-6 8-6 10-1 2-5 9-5 10 1 1 7-10 14-10 14Z"/>',

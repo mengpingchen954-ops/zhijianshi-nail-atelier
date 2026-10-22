@@ -10,7 +10,7 @@ export class SalonSound{
    this.musicElement.addEventListener('ended',()=>this.selectTrack((this.track+1)%MUSIC_TRACKS.length));
    for(const event of ['playing','pause','waiting','loadedmetadata'])this.musicElement.addEventListener(event,()=>this.onMusicChange?.());
    this.musicElement.addEventListener('error',()=>{this.musicError='音乐载入失败，请换一首或重试。';this.onMusicChange?.();});
-   this.loading=Promise.all([...['file','brush','wipe','paint','gel','drill','fan','room'],...['pick','cap','tip','sticker','jewel','snip','camera','done','error','lamp','stroke'].flatMap(k=>[0,1,2].map(i=>k+'-'+i))].map(async k=>{try{const r=await fetch(BASE+k+'.wav?v=4');if(!r.ok)throw Error(k);this.buffers[k]=await this.ctx.decodeAudioData(await r.arrayBuffer());}catch{this.failed=true;}}));
+   this.loading=Promise.all([...['file','brush','wipe','paint','gel','drill','fan','room'],...['pick','cap','tip','sticker','jewel','snip','camera','done','error','lamp','stroke','coin','reward'].flatMap(k=>[0,1,2].map(i=>k+'-'+i))].map(async k=>{try{const r=await fetch(BASE+k+'.wav?v=4');if(!r.ok)throw Error(k);this.buffers[k]=await this.ctx.decodeAudioData(await r.arrayBuffer());}catch{this.failed=true;}}));
   }
   await this.ctx.resume();this.playMusic();await this.loading;if(!this.ambience)this.ambience=this.loop('room','room',.75);return !this.failed;
  }
