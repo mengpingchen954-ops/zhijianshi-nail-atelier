@@ -16,7 +16,8 @@
     "test:browser": "node tests/ui-playthrough.mjs",
     "test:modules": "node tests/playthrough.mjs",
     "test:edges": "node tests/edge-cases.mjs",
-    "test:interactions": "node tests/salon-interactions.mjs"
+    "test:interactions": "node tests/salon-interactions.mjs",
+    "test:music": "node tests/salon-music.mjs"
   },
   "dependencies": {
     "three": "^0.186.1",
