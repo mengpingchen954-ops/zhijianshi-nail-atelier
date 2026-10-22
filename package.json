@@ -20,7 +20,8 @@
     "test:music": "node tests/salon-music.mjs",
     "test:length": "node tests/salon-length.mjs",
     "test:music:dock": "node tests/salon-music-dock.mjs",
-    "test:customers": "node tests/salon-customers.mjs"
+    "test:customers": "node tests/salon-customers.mjs",
+    "test:reference": "node tests/reference-viewer.mjs"
   },
   "dependencies": {
     "three": "^0.186.1",
