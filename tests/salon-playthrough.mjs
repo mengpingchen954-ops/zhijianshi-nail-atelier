@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {designCustomer} from './design-customer.mjs';
 const url=process.env.GAME_URL||'http://127.0.0.1:5184/',clients=(process.env.CLIENTS||'lin,qiao,wen,zhou,xia,su,tang,lu').split(','),errors=[],checks=[];
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
@@ -15,7 +16,7 @@ try{
  const response=await page.goto(url,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator('#open-book').click();
  for(const id of clients){
   if(!(await page.locator('[data-client="'+id+'"]').isVisible()))await page.locator('#home').click();
-  await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();await page.locator('#confirm-plan').click();
+  await page.locator('[data-client="'+id+'"]').click();await page.locator('#accept-client').click();await designCustomer(page,id);await page.locator('#confirm-plan').click();
   let guard=0;
   while((await state()).mode==='work'&&guard++<30){
    const s=await state(),step=s.step;console.log(id,step);

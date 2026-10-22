@@ -40,6 +40,7 @@ export function validateDesign(x){
  for(const n of d.nails){
   if(!n||!SHAPES.some(s=>s[0]===n.shape)||!num(n.length,.45,1.15)||!hex(n.base)||!FINISHES.some(f=>f[0]===n.finish))throw Error('无效甲面数据');
   n.base=n.base.toLowerCase();
+  if(n.unpainted!==undefined&&typeof n.unpainted!=='boolean')throw Error('底色选择记录无效');
   for(const key of ['width','curve','build'])if(n[key]!==undefined&&!num(n[key],key==='build'?0:.5,key==='build'?1:1.6))throw Error('甲床参数无效');
   if(n.pattern!==undefined&&n.pattern!==null&&!['french','marble'].includes(n.pattern))throw Error('图案工艺无效');
   if(n.topcoat!==undefined&&!['gloss','matte'].includes(n.topcoat))throw Error('封层无效');

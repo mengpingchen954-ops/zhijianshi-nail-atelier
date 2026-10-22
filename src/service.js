@@ -37,13 +37,17 @@ export function targetDesign(c){
  if(c.feature.includes(i)&&c.deco)n.decorations.push({id:uid(),type:c.id==='lu'&&i>4?'butterfly':c.deco,u:.5,v:.54,rotation:i>4?-.18:.18,scale:1.1});
  });return d;
 }
+export function blankPlan(c){
+ const d=c.route==='repair'?targetDesign(c):createDesign();d.name=c.title;
+ d.nails.forEach((n,i)=>{if(c.route==='repair'&&i!==6)return;Object.assign(n,{shape:'round',length:.45,base:'#f4efe8',finish:'gloss',topcoat:'gloss',gradient:null,pattern:null,decorations:[],strokes:[],width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:0,unpainted:true});});return d;
+}
 export function stepsFor(c){
  const steps=['inspect'];if(c.old)steps.push('remove');if(c.dirty||c.old)steps.push('clean');steps.push('file','dust','base');steps.push(...(c.route==='natural'?['build']:['fit','bond']));steps.push('cureBase','color');if(c.finish==='catEye')steps.push('magnet');if(c.deco)steps.push('decor');steps.push('cureColor','top','cureTop','finish');return steps;
 }
 export const targetsFor=s=>s.client==='zhou'?[6]:Array.from({length:10},(_,i)=>i);
 export function createSession(id){
  const c=customer(id);if(!c)throw Error('顾客不存在');
- return {version:2,id:uid(),client:id,phase:'plan',step:0,plan:targetDesign(c),work:Array.from({length:10},(_,i)=>({done:[],coverage:{},fitWidth:0,fitCurve:0,magnet:{u:.5,angle:-.55},dirty:c.dirty?(i%3===0?.9:.45):0,old:c.old?(i%4===0?.65:1):0,initialLength:c.route==='natural'?c.length+.12+(i%4)*.025:.48+(i%4)*.025,build:0})),lamp:null,createdAt:Date.now(),delivered:false};
+ return {version:2,planningVersion:1,id:uid(),client:id,phase:'plan',step:0,plan:blankPlan(c),work:Array.from({length:10},(_,i)=>({done:[],coverage:{},fitWidth:0,fitCurve:0,magnet:{u:.5,angle:-.55},dirty:c.dirty?(i%3===0?.9:.45):0,old:c.old?(i%4===0?.65:1):0,initialLength:c.route==='natural'?c.length+.12+(i%4)*.025:.48+(i%4)*.025,build:0})),lamp:null,createdAt:Date.now(),delivered:false};
 }
 export const stepId=s=>stepsFor(customer(s.client))[s.step];
 export const validCells=n=>Array.from({length:15},(_,i)=>({i,u:.2+(i%3)*.3,v:.12+Math.floor(i/3)*.18})).filter(p=>insideNail(n,p.u,p.v,.02));
@@ -74,7 +78,7 @@ export function placeDecoration(s,index,u,v){
  if(target<0)return false;placed.push(target);if(placed.length===ns.filter(d=>!d.hidden).length)complete(s,index);return true;
 }
 export function nextStep(s){if(!stageDone(s))throw Error('请先完成本阶段所有待处理手指');if(stepId(s)==='finish')return; s.step++;const id=stepId(s);if(id==='decor')for(const i of targetsFor(s))if(!s.plan.nails[i].decorations.some(d=>!d.hidden))complete(s,i,id);}
-export function beginWork(s){validateDesign(s.plan);s.phase='work';s.step=0;}
+export function beginWork(s){validateDesign(s.plan);const missing=designRequirements(s).filter(r=>!r.ok);if(missing.length)throw Error(missing.slice(0,2).map(r=>r.label).join('；'));s.phase='work';s.step=0;}
 export function beginLamp(s,hand){
  const step=stepId(s);if(!STAGES[step].cure||s.lamp)throw Error('当前不能照灯');
  const indices=targetsFor(s).filter(i=>Math.floor(i/5)===hand&&!s.work[i].done.includes(step));if(!indices.length)throw Error('这只手已完成本轮固化');s.lamp={hand,remaining:4.5,indices};
@@ -95,10 +99,23 @@ export function viewDesign(s){
   if(id==='fit'||id==='bond'&&!ready('bond')){const expected=(i%5===0?3:i%5===4?0:1)+(c.width>1.1?1:0),sizes=[.74,.88,1,1.14,1.28];n.tipPreview={width:n.width*sizes[w.fitWidth]/sizes[expected],curve:w.fitCurve?1.2:.92,length:s.plan.nails[i].length,shape:s.plan.nails[i].shape};}
  });return d;
 }
+export function designRequirements(s){
+ const c=customer(s.client),indices=targetsFor(s),nails=indices.map(i=>s.plan.nails[i]),has=(n,type)=>n.decorations.some(d=>!d.hidden&&d.type===type),count=type=>nails.filter(n=>has(n,type)).length;
+ const painted=nails.every(n=>!n.unpainted),shape=nails.every(n=>n.shape===c.shape&&n.length<=c.length+.08);
+ const patternOK=!c.pattern||(c.pattern==='french'?nails.every(n=>n.pattern==='french'):[...new Set(indices.map(i=>Math.floor(i/5)))].every(hand=>indices.some(i=>Math.floor(i/5)===hand&&(c.pattern==='gradient'?!!s.plan.nails[i].gradient:s.plan.nails[i].pattern===c.pattern))));
+ const effect=nails.every(n=>n.finish===c.finish)&&patternOK;
+ const palette=nails.every(n=>!n.unpainted&&c.palette.some(hex=>{const a=n.base.slice(1).match(/../g).map(v=>parseInt(v,16)),b=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return Math.hypot(...a.map((v,i)=>v-b[i]))<55;}));
+ const features=!c.deco||(c.id==='lu'?indices.filter(i=>i<5&&has(s.plan.nails[i],'bow')).length>=2&&indices.filter(i=>i>4&&has(s.plan.nails[i],'butterfly')).length>=2:count(c.deco)>=(c.route==='repair'?1:c.feature.length));
+ const labels={flower:'小花',star:'星星',pearl:'珍珠',foil:'金箔',bow:'蝴蝶结'},effects={catEye:'猫眼',matte:'哑光',gloss:'亮泽',french:'法式',gradient:'渐变',marble:'晕纹'};
+ const checks=[{key:'painted',label:`先为${indices.length===1?'维修指':'十指'}选择底色（${nails.filter(n=>!n.unpainted).length}/${nails.length}）`,ok:painted},{key:'shape',label:`${{round:'圆形',square:'方圆形',almond:'杏仁形',oval:'椭圆形'}[c.shape]}甲 · 长度 ≤ ${(c.length+.08).toFixed(2)}`,ok:shape},{key:'effect',label:`${effects[c.pattern||c.finish]}${['gradient','marble'].includes(c.pattern)?'：每只手至少一指，其余可自由搭配':''}`,ok:effect},{key:'palette',label:'使用顾客期望的色系',ok:palette}];
+ if(c.deco)checks.push({key:'features',label:c.id==='lu'?'左手至少两指蝴蝶结，右手至少两指蝴蝶':`至少${c.route==='repair'?1:c.feature.length}指${labels[c.deco]} · 位置由你安排`,ok:features});
+ if(c.id==='lin'||c.id==='su')checks.push({key:'comfort',label:c.id==='su'?'不使用凸起的水钻或珍珠':'不使用水钻',ok:nails.every(n=>!has(n,'gem')&&(c.id!=='su'||!has(n,'pearl')))});
+ return checks;
+}
 export function evaluateService(s){
  const ids=stepsFor(customer(s.client)).filter(k=>k!=='finish'),indices=targetsFor(s),total=ids.length*indices.length,done=indices.reduce((sum,i)=>sum+ids.filter(k=>s.work[i].done.includes(k)).length,0),missing=[];
  for(const i of indices)for(const id of ids)if(!s.work[i].done.includes(id))missing.push({index:i,step:id,label:STAGES[id].name});
- const c=customer(s.client),style=s.plan.nails.every(n=>n.shape===c.shape&&n.length<=c.length+.08&&n.finish===c.finish&&(c.pattern==='gradient'?!!n.gradient:(n.pattern||null)===c.pattern)),features=c.feature.every(i=>!c.deco||s.plan.nails[i].decorations.some(d=>!d.hidden&&d.type===(c.id==='lu'&&i>4?'butterfly':c.deco))),palette=s.plan.nails.every(n=>c.palette.some(hex=>{const a=n.base.slice(1).match(/../g).map(v=>parseInt(v,16)),b=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return Math.hypot(...a.map((v,i)=>v-b[i]))<55;}));
+ const checks=designRequirements(s),style=checks.filter(r=>['painted','shape','effect'].includes(r.key)).every(r=>r.ok),features=checks.filter(r=>['features','comfort'].includes(r.key)).every(r=>r.ok),palette=checks.find(r=>r.key==='palette').ok;
  const score=Math.round(70*done/total+(style?10:0)+(features?10:0)+(palette?10:0));return {score,missing,style,features,palette,complete:done===total&&style&&features&&palette};
 }
 export function validateSession(value){
@@ -107,6 +124,6 @@ export function validateSession(value){
  for(const w of s.work){if(w.fileTravel!==undefined&&(!Number.isFinite(w.fileTravel)||w.fileTravel<0||w.fileTravel>1))throw Error('修形进度无效');for(const path of Object.values(w.paths||{}))if(!Array.isArray(path)||path.length>500||path.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||v<0||v>1)))throw Error('工具轨迹记录无效');}
  if(s.lamp&&(!Number.isFinite(s.lamp.remaining)||![0,1].includes(s.lamp.hand)||!Array.isArray(s.lamp.indices)||s.lamp.indices.some(i=>!Number.isInteger(i)||i<0||i>9)))throw Error('固化记录无效');return s;
 }
-export function loadSession(storage=localStorage){const raw=storage.getItem(SESSION_KEY);return raw?validateSession(JSON.parse(raw)):null;}
+export function loadSession(storage=localStorage){const raw=storage.getItem(SESSION_KEY);if(!raw)return null;const s=validateSession(JSON.parse(raw));if(s.phase==='plan'&&!s.planningVersion){const visual=n=>JSON.stringify([n.shape,n.length,n.base,n.finish,n.pattern,n.gradient,n.decorations.map(d=>[d.type,d.u,d.v,d.rotation,d.scale,!!d.hidden,!!d.locked]),n.strokes]);const reference=targetDesign(customer(s.client));if(s.plan.nails.every((n,i)=>visual(n)===visual(reference.nails[i])))s.plan=blankPlan(customer(s.client));s.planningVersion=1;}return s;}
 export function saveSession(s,storage=localStorage){const value=validateSession(s);storage.setItem(SESSION_KEY,JSON.stringify(value));}
 export const fingerLabel=i=>`${i<5?'左':'右'}${['拇指','食指','中指','无名指','小指'][i%5]}`;
