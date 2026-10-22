@@ -18,7 +18,8 @@
     "test:edges": "node tests/edge-cases.mjs",
     "test:interactions": "node tests/salon-interactions.mjs",
     "test:music": "node tests/salon-music.mjs",
-    "test:length": "node tests/salon-length.mjs"
+    "test:length": "node tests/salon-length.mjs",
+    "test:music:dock": "node tests/salon-music-dock.mjs"
   },
   "dependencies": {
     "three": "^0.186.1",
