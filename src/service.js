@@ -20,13 +20,13 @@ export const STAGES={
  build:{name:'本甲建构',short:'建构',tool:'gel',hint:'铺开建构胶，覆盖甲面；侧面查看顶点与厚薄，再送入灯中。',sound:'gel'},
  fit:{name:'逐指选片',short:'试片',tool:'tip',hint:'选择宽度与曲率合适的甲片，再点击甲面试贴确认。',sound:'tip'},
  bond:{name:'甲片贴合',short:'贴合',tool:'press',hint:'由指根向指尖平稳压合，覆盖甲面以排除贴合气泡。',sound:'gel'},
- cureBase:{name:'基础层固化',short:'照灯',tool:'lamp',hint:'基础层已就绪。放手入灯，完成本轮固化。',sound:null,cure:true},
+ cureBase:{name:'基础层固化',short:'照灯',tool:'lamp',hint:'基础层已就绪。整手进入固化灯，五指一起完成本轮固化。',sound:null,cure:true},
  color:{name:'按蓝图上色',short:'做款',tool:'polish',hint:'沿甲面涂布，蓝图中的颜色、法式或纹理会随刷动显现。',sound:'paint'},
  magnet:{name:'猫眼磁吸',short:'磁吸',tool:'magnet',hint:'移动磁铁调整亮带，方向滑杆控制斜度；满意后确认当前指。',sound:null},
  decor:{name:'贴纸与饰品',short:'装饰',tool:'tweezers',hint:'按照半透明蓝图的位置，点击放下贴纸或立体饰品。',sound:'sticker'},
- cureColor:{name:'款式层固化',short:'照灯',tool:'lamp',hint:'锁定本轮款式与猫眼布局；未固化前仍可返回调整。',sound:null,cure:true},
+ cureColor:{name:'款式层固化',short:'照灯',tool:'lamp',hint:'整手进入固化灯，五指一起锁定本轮款式与猫眼布局。',sound:null,cure:true},
  top:{name:'涂封层',short:'封层',tool:'polish',hint:'刷满甲面完成封层；哑光与亮泽会保留各自质感。',sound:'paint'},
- cureTop:{name:'封层固化',short:'照灯',tool:'lamp',hint:'最后一轮固化完成后，检查并交付作品。',sound:null,cure:true},
+ cureTop:{name:'封层固化',short:'照灯',tool:'lamp',hint:'整手进入固化灯，五指一起完成最后一轮固化。',sound:null,cure:true},
  finish:{name:'交付作品',short:'交付',tool:'camera',hint:'检查十指，拍照、收藏，并听听顾客的反馈。',sound:'camera'}
 };
 export const SESSION_KEY='finger-poetry-service-v2',ALBUM_KEY='finger-poetry-album-v2';
