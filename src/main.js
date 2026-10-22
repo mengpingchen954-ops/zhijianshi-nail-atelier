@@ -1,6 +1,8 @@
 import './style.css';
 import {NailScene} from './scene.js';
 import {icon} from './icons.js';
+import {polishControls,bindPolish,patternControl} from './polish-ui.js';
+import {lookDesign} from './season.js';
 import {COLORS,SHAPES,FINISHES,DECOS,FINGERS,COMMISSIONS,uid,clone,clamp,createDesign,insideNail,constrainDeco,copyNail,requirements,History,saveDraft,loadDraft,saveWork,listWorks,openWork,validateDesign} from './state.js';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -10,10 +12,7 @@ let design,active=2,tab='paint',tool='paint',color='#b94160',brush=.065,selected
 let bootError='';
 try{design=loadDraft();}catch(e){bootError=e.message;draftWritable=false;}
 if(!design){
- design=createDesign();design.name='玫瑰色的星期天';
- design.nails.forEach((n,i)=>{n.length=.58;n.base=i%5===3?'#f1ddc8':i%5===1?'#b94160':'#d998ad';if(i%5===2)n.gradient={color:'#f1ddc8',angle:0,range:.7};});
- for(const i of [3,8])design.nails[i].decorations.push({id:uid(),type:'flower',u:.5,v:.5,rotation:.1,scale:1.25});
- for(const i of [2,7])design.nails[i].decorations.push({id:uid(),type:'pearl',u:.5,v:.16,rotation:0,scale:.8});
+ design=lookDesign('liquid');
 }
 design.presentation??={background:0,pose:0};
 const progress=new Set(design.unlocked);
@@ -23,7 +22,7 @@ mergeProgress();
 
 $('#app').innerHTML=`
  <header class="topbar"><div class="brand">${icon('flower').replace('<svg','<svg class="brand-mark"')}<div><strong>指间诗</strong><small>THE LITTLE NAIL ATELIER</small></div></div>
- <nav class="top-actions" aria-label="作品菜单"><span class="save-state" id="save-status" role="status">作品保存在此浏览器</span><span class="divider"></span><button id="new-work" title="新建作品">${icon('plus')}<span>新作品</span></button><button id="open-shelf" title="我的收藏">${icon('shelf')}<span>收藏室</span></button><button id="sound" class="icon-only" title="开启操作音效" aria-label="开启操作音效" aria-pressed="false">${icon('sound')}</button><button id="help" class="icon-only" title="操作帮助" aria-label="操作帮助">${icon('help')}</button></nav></header>
+ <nav class="top-actions" aria-label="作品菜单"><a href="./" class="text-button">本月新款 / 工作室 ↗</a><span class="save-state" id="save-status" role="status">作品保存在此浏览器</span><span class="divider"></span><button id="new-work" title="新建作品">${icon('plus')}<span>新作品</span></button><button id="open-shelf" title="我的收藏">${icon('shelf')}<span>收藏室</span></button><button id="sound" class="icon-only" title="开启操作音效" aria-label="开启操作音效" aria-pressed="false">${icon('sound')}</button><button id="help" class="icon-only" title="操作帮助" aria-label="操作帮助">${icon('help')}</button></nav></header>
  <main class="workbench"><section class="atelier" aria-label="美甲工作台"><div class="stage"><div id="world"><div class="loading">正在整理你的美甲工作台…</div></div>
  <div class="scene-info"><div class="eyebrow" id="scene-kicker">A LITTLE TIME FOR YOURSELF</div><h2 id="focus-name">十指之间，皆是灵感</h2><p id="focus-sub">选一枚指甲，开始你的创作。</p></div>
  <nav class="viewbar" aria-label="观察范围"><button data-view="detail">单指</button><button data-view="hand">单手</button><button data-view="both" class="active">双手</button></nav>
@@ -102,8 +101,9 @@ function renderPanel(){
    $$('[data-nudge]').forEach(b=>b.onclick=()=>mutate(()=>{const k=b.dataset.nudge;d.u+=k==='left'?-.025:k==='right'?.025:0;d.v+=k==='up'?.025:k==='down'?-.025:0;constrainDeco(n,d);}));
   }
  }else if(tab==='finish'){
-  p.innerHTML=panelHead('把光留在指尖','Polish & light','柔雾、镜泽，或一束会流动的猫眼光。同样的颜色，也有不同性格。')+`<div class="choices finish-choices">${FINISHES.map(([id,label])=>`<button class="choice ${n.finish===id?'active':''}" data-finish="${id}"><i class="finish-swatch ${id}"></i>${label}</button>`).join('')}</div>`+(n.finish==='catEye'?`<button class="wide-button ${tool==='magnet'?'primary':''}" id="magnet-tool">${icon('magnet')}${tool==='magnet'?'磁铁已启用 · 在甲面拖动':'使用磁铁'}</button>`+range('magnet-u','亮带位置',n.magnet.u,0,1,.01,`${Math.round(n.magnet.u*100)}%`)+range('magnet-angle','亮带方向',Math.round(n.magnet.angle*180/Math.PI),-180,180,1,`${Math.round(n.magnet.angle*180/Math.PI)}°`):'')+`<p class="note">质感作用于整枚甲面。猫眼采用受控光带，随磁铁位置与观察角度变化；不是粒子物理模拟。</p>`;
-  $$('[data-finish]').forEach(b=>b.onclick=()=>mutate(()=>{n.finish=b.dataset.finish;tool=n.finish==='catEye'?'magnet':'none';},{panel:true}));
+  p.innerHTML=panelHead('把光留在指尖','Polish & light','柔雾、镜泽，或一束会流动的猫眼光。同样的颜色，也有不同性格。')+`<div class="choices finish-choices">${FINISHES.map(([id,label])=>`<button class="choice ${n.finish===id?'active':''}" data-finish="${id}"><i class="finish-swatch ${id}"></i>${label}</button>`).join('')}</div>`+(n.finish==='catEye'?`<button class="wide-button ${tool==='magnet'?'primary':''}" id="magnet-tool">${icon('magnet')}${tool==='magnet'?'磁铁已启用 · 在甲面拖动':'使用磁铁'}</button>`+range('magnet-u','亮带位置',n.magnet.u,0,1,.01,`${Math.round(n.magnet.u*100)}%`)+range('magnet-angle','亮带方向',Math.round(n.magnet.angle*180/Math.PI),-180,180,1,`${Math.round(n.magnet.angle*180/Math.PI)}°`):'')+patternControl(n,'free-pattern')+polishControls(n)+`<p class="note">质感作用于整枚甲面。猫眼采用受控光带，随磁铁位置与观察角度变化；不是粒子物理模拟。</p>`;
+  $$('[data-finish]').forEach(b=>b.onclick=()=>mutate(()=>{n.finish=b.dataset.finish;n.topcoat=n.finish==='matte'?'matte':'gloss';if(n.polish)n.polish.chrome=n.finish==='metal'?1:0;tool=n.finish==='catEye'?'magnet':'none';},{panel:true}));
+  $('#free-pattern').onchange=e=>mutate(()=>n.pattern=e.target.value||null,{panel:true});bindPolish(p,n,fn=>mutate(fn,{panel:true}));
   if(n.finish==='catEye'){$('#magnet-tool').onclick=()=>{tool=tool==='magnet'?'none':'magnet';renderPanel();updateStatus();};bindRange('magnet-u',v=>n.magnet.u=v,v=>`${Math.round(v*100)}%`);bindRange('magnet-angle',v=>n.magnet.angle=v*Math.PI/180,v=>`${v}°`);}
  }else{
   p.innerHTML=panelHead('换个角度看灵感','A closer look','左键拖动旋转，滚轮缩放。这里的操作只调整镜头，让你安心查看每个细节。')+`<button class="wide-button" id="reset-camera">重置当前镜头</button><div class="section"><div class="section-title">看得近一点</div><p class="note">点击下方任意手指，即可进入单指近景。选回「涂绘」或「装饰」继续创作。编辑时也可使用右键旋转。</p></div>`;

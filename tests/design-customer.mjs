@@ -6,7 +6,10 @@ export async function designCustomer(page,id){
   await page.locator(`[data-color="${c.palette[i%5===3?1:0]}"]`).click();
   await page.locator('#plan-shape').selectOption(c.shape);
   await page.locator('#plan-length').fill(String(c.length));await page.locator('#plan-length').dispatchEvent('change');
-  await page.locator('#plan-effect').selectOption(c.pattern||c.finish);
+  await page.locator('#plan-effect').selectOption(c.finish);
+  if(c.pattern==='gradient')await page.locator('#plan-gradient').check();
+  else await page.locator('#plan-pattern').selectOption(c.pattern||'');
+  if(c.look)await page.locator('#reference-recipe').click();
   if(c.deco&&c.feature.includes(i)){
    await page.locator(`[data-sticker="${id==='lu'&&i>4?'butterfly':c.deco}"]`).click();
    const box=await page.locator(`[data-plan="${i}"]`).boundingBox();await page.mouse.click(box.x+box.width*.52,box.y+box.height*.46);

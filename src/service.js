@@ -1,4 +1,5 @@
 import {createDesign,clone,uid,insideNail,validateDesign,clamp} from './state.js';
+import {LOOKS,lookDesign,polishValues,SEASON} from './season.js';
 
 export const CLIENTS=[
  {id:'lin',name:'林悦',role:'花店店主',initial:'悦',skin:'#dbad96',color:'#d99aa7',palette:['#e9b6bd','#f7e9d7','#a6b5a0'],title:'玫瑰奶冻',quote:'想把花店的一点温柔，留在指尖。短一点，方便包花。',route:'natural',old:null,dirty:true,width:1.12,curve:.92,shape:'round',length:.49,finish:'gloss',pattern:null,deco:'flower',feature:[3,8],price:168,limit:'短圆甲 · 本甲建构 · 两指小花 · 不要大钻'},
@@ -10,6 +11,11 @@ export const CLIENTS=[
  {id:'lu',name:'陆晴',role:'视觉设计师',initial:'晴',skin:'#d8a493',color:'#c0899f',palette:['#b6758d','#efd8dd','#8c7c9f'],title:'不对称的心动',quote:'左右手不要一模一样。左手蝴蝶结，右手留给小蝴蝶，像两页手帐。',route:'tips',old:null,dirty:false,width:1.04,curve:1.1,shape:'oval',length:.71,finish:'gloss',pattern:'gradient',deco:'bow',feature:[1,3,7,9],price:258,limit:'椭圆甲片 · 左右不对称 · 蝴蝶结与蝴蝶'},
  {id:'zhou',name:'周星',role:'插画师 · 回访',initial:'星',skin:'#d2a080',color:'#7489b2',palette:['#34486a','#9ba8c5','#d5bc7d'],title:'补回一颗星',quote:'上次做的很喜欢，只是右手食指掉了一片。其他九指请帮我保留。',route:'repair',old:null,dirty:false,width:.96,curve:1.08,shape:'round',length:.58,finish:'catEye',pattern:null,deco:'star',feature:[1,6],price:38,limit:'仅维修右食指 · 匹配旧款 · 保留其余九指'}
 ];
+const seasonalHosts=['lin','wen','tang','su','xia','qiao'];
+for(const [i,look] of LOOKS.entries()){
+ const host=CLIENTS.find(c=>c.id===seasonalHosts[i]);
+ CLIENTS.push({...host,id:'trend-'+look.id,look:look.id,season:SEASON.id,seasonReview:look.review,title:look.name,palette:look.palette,color:look.color,shape:look.shape,length:look.length,finish:look.finish,pattern:look.pattern,deco:look.accent,feature:look.accent?[3,8]:[],price:host.price+30,quote:look.brief,limit:look.request});
+}
 export const STAGES={
  inspect:{name:'检查甲况',short:'检查',tool:'inspect',hint:'逐指检查甲床、旧材料与污垢，点击甲面记录。',sound:'pick'},
  remove:{name:'卸除旧材料',short:'卸旧',tool:'drill',hint:'在旧材料上来回移动；完成后露出本甲。',sound:'drill'},
@@ -33,6 +39,7 @@ export const SESSION_KEY='finger-poetry-service-v2',ALBUM_KEY='finger-poetry-alb
 export const customer=id=>CLIENTS.find(c=>c.id===id);
 export const nailLengthLabel=value=>value<=.65?'短甲':value<=.82?'中长甲':'长甲';
 export function targetDesign(c){
+ if(c.look){const d=lookDesign(c.look);d.nails.forEach((n,i)=>Object.assign(n,{width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:.7}));return d;}
  const d=createDesign();d.name=c.title;d.nails.forEach((n,i)=>{Object.assign(n,{shape:c.shape,length:c.length,base:c.palette[i%5===3?1:0],finish:c.finish,topcoat:c.finish==='matte'?'matte':'gloss',pattern:c.pattern==='gradient'?null:c.pattern,width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:.7});
  if(c.pattern==='gradient')n.gradient={color:c.palette[1],angle:15,range:.85};
  if(c.feature.includes(i)&&c.deco)n.decorations.push({id:uid(),type:c.id==='lu'&&i>4?'butterfly':c.deco,u:.5,v:.54,rotation:i>4?-.18:.18,scale:1.1});
@@ -40,17 +47,17 @@ export function targetDesign(c){
 }
 export function blankPlan(c){
  const d=c.route==='repair'?targetDesign(c):createDesign();d.name=c.title;
- d.nails.forEach((n,i)=>{if(c.route==='repair'&&i!==6)return;Object.assign(n,{shape:'round',length:.45,base:'#f4efe8',finish:'gloss',topcoat:'gloss',gradient:null,pattern:null,decorations:[],strokes:[],width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:0,unpainted:true});});return d;
+ d.nails.forEach((n,i)=>{if(c.route==='repair'&&i!==6)return;delete n.polish;Object.assign(n,{shape:'round',length:.45,base:'#f4efe8',finish:'gloss',topcoat:'gloss',gradient:null,pattern:null,decorations:[],strokes:[],width:c.width*(1+((i*7)%5-2)*.025),curve:c.curve,build:0,unpainted:true});});return d;
 }
-export function stepsFor(c){
- const steps=['inspect'];if(c.old)steps.push('remove');if(c.dirty||c.old)steps.push('clean');steps.push('file','dust','base');steps.push(...(c.route==='natural'?['build']:['fit','bond']));steps.push('cureBase','color');if(c.finish==='catEye')steps.push('magnet');if(c.deco)steps.push('decor');steps.push('cureColor','top','cureTop','finish');return steps;
+export function stepsFor(c,plan=null){
+ const steps=['inspect'];if(c.old)steps.push('remove');if(c.dirty||c.old)steps.push('clean');steps.push('file','dust','base');steps.push(...(c.route==='natural'?['build']:['fit','bond']));steps.push('cureBase','color');if(c.finish==='catEye'||plan?.nails.some(n=>n.finish==='catEye'))steps.push('magnet');if(c.deco||plan?.nails.some(n=>n.decorations.some(d=>!d.hidden)))steps.push('decor');steps.push('cureColor','top','cureTop','finish');return steps;
 }
 export const targetsFor=s=>s.client==='zhou'?[6]:Array.from({length:10},(_,i)=>i);
 export function createSession(id){
  const c=customer(id);if(!c)throw Error('顾客不存在');
  return {version:2,planningVersion:1,id:uid(),client:id,phase:'plan',step:0,plan:blankPlan(c),work:Array.from({length:10},(_,i)=>({done:[],coverage:{},fitWidth:0,fitCurve:0,magnet:{u:.5,angle:-.55},dirty:c.dirty?(i%3===0?.9:.45):0,old:c.old?(i%4===0?.65:1):0,initialLength:c.route==='natural'?c.length+.12+(i%4)*.025:.48+(i%4)*.025,build:0})),lamp:null,createdAt:Date.now(),delivered:false};
 }
-export const stepId=s=>stepsFor(customer(s.client))[s.step];
+export const stepId=s=>stepsFor(customer(s.client),s.plan)[s.step];
 export const validCells=n=>Array.from({length:15},(_,i)=>({i,u:.2+(i%3)*.3,v:.12+Math.floor(i/3)*.18})).filter(p=>insideNail(n,p.u,p.v,.02));
 export function progress(s,index,step=stepId(s)){
  const w=s.work[index];if(w.done.includes(step))return 1;
@@ -93,7 +100,7 @@ export function placeDecoration(s,index,u,v){
  const placed=w.coverage.decor??=[];const target=ns.findIndex((d,i)=>!d.hidden&&!placed.includes(i)&&Math.hypot(d.u-u,d.v-v)<.24);
  if(target<0)return false;placed.push(target);if(placed.length===ns.filter(d=>!d.hidden).length)complete(s,index);return true;
 }
-export function nextStep(s){if(!stageDone(s))throw Error('请先完成本阶段所有待处理手指');if(stepId(s)==='finish')return; s.step++;const id=stepId(s);if(id==='decor')for(const i of targetsFor(s))if(!s.plan.nails[i].decorations.some(d=>!d.hidden))complete(s,i,id);}
+export function nextStep(s){if(!stageDone(s))throw Error('请先完成本阶段所有待处理手指');if(stepId(s)==='finish')return; s.step++;const id=stepId(s);if(id==='magnet')for(const i of targetsFor(s))if(s.plan.nails[i].finish!=='catEye')complete(s,i,id);if(id==='decor')for(const i of targetsFor(s))if(!s.plan.nails[i].decorations.some(d=>!d.hidden))complete(s,i,id);}
 export function beginWork(s){validateDesign(s.plan);if(s.consultation&&s.consultation.length!==4)throw Error('先与顾客聊清四项需求，再开始施工。');const missing=designRequirements(s).filter(r=>!r.ok);if(missing.length)throw Error(missing.slice(0,2).map(r=>r.label).join('；'));s.phase='work';s.step=0;}
 export function beginLamp(s,hand){
  const step=stepId(s);if(!STAGES[step].cure||s.lamp)throw Error('当前不能照灯');
@@ -115,10 +122,11 @@ export function viewDesign(s){
  n.decorations=ready('decor')?n.decorations:n.decorations.filter((_,k)=>(w.coverage.decor||[]).includes(k));
  n.magnet=clone(w.magnet);n.surface={undercoat:progress(s,i,'base'),paths:w.paths||{},old:pre?null:c.old,oldAmount:w.old,oldColor:c.old==='gel'?'#a9445c':'#cf91a8',remove:w.coverage.remove||[],dirty:ready('clean')?0:w.dirty,dust:ready('file')&&!ready('dust')?1:0,cleared:w.coverage.clean||[],dusted:w.coverage.dust||[],revealed:w.coverage.color||[],target:clone(s.plan.nails[i]),color,ghost:id==='decor'?s.plan.nails[i].decorations.filter((_,k)=>!(w.coverage.decor||[]).includes(k)):[],bonding:id==='bond'&&!ready('bond'),bond:w.coverage.bond||[]};
  n.surface.activeStep=id;n.surface.breaks=w.breaks||{};n.surface.fine=w.fineCoverage||{};n.surface.bondFront=bond;n.surface.dust=!ready('dust')?fileFraction:0;n.surface.top=progress(s,i,'top');
- if(!color){n.base='#e8b7ad';n.gradient=null;n.pattern=null;n.strokes=[];n.finish=ready('color')?c.finish:'gloss';}
+ if(!color){delete n.polish;n.base='#e8b7ad';n.gradient=null;n.pattern=null;n.strokes=[];n.finish=ready('color')?c.finish:'gloss';}
  if(color)n.finish=s.plan.nails[i].finish;
   n.topcoat=ready('top')?s.plan.nails[i].topcoat:'gloss';
   if(id==='fit'||id==='bond'&&!ready('bond')){const expected=(i%5===0?3:i%5===4?0:1)+(c.width>1.1?1:0),sizes=[.74,.88,1,1.14,1.28];n.tipPreview={width:id==='bond'?n.width:n.width*sizes[w.fitWidth]/sizes[expected],curve:w.fitCurve?1.2:.92,length:s.plan.nails[i].length,shape:s.plan.nails[i].shape,hover:id==='fit'&&!ready('fit'),front:id==='fit'&&ready('fit')?1:bond};}
+  if(ready('cureTop'))delete n.surface;
  });return d;
 }
 export function designRequirements(s){
@@ -128,20 +136,31 @@ export function designRequirements(s){
  const effect=nails.every(n=>n.finish===c.finish)&&patternOK;
  const palette=nails.every(n=>!n.unpainted&&c.palette.some(hex=>{const a=n.base.slice(1).match(/../g).map(v=>parseInt(v,16)),b=hex.slice(1).match(/../g).map(v=>parseInt(v,16));return Math.hypot(...a.map((v,i)=>v-b[i]))<55;}));
  const features=!c.deco||(c.id==='lu'?indices.filter(i=>i<5&&has(s.plan.nails[i],'bow')).length>=2&&indices.filter(i=>i>4&&has(s.plan.nails[i],'butterfly')).length>=2:count(c.deco)>=(c.route==='repair'?1:c.feature.length));
- const labels={flower:'小花',star:'星星',pearl:'珍珠',foil:'金箔',bow:'蝴蝶结'},effects={catEye:'猫眼',matte:'哑光',gloss:'亮泽',french:'法式',gradient:'渐变',marble:'晕纹'};
- const checks=[{key:'painted',label:`先为${indices.length===1?'维修指':'十指'}选择底色（${nails.filter(n=>!n.unpainted).length}/${nails.length}）`,ok:painted},{key:'shape',label:`${indices.length===1?'维修指':'十指'}改为${{round:'圆形',square:'方圆形',almond:'杏仁形',oval:'椭圆形'}[c.shape]}（${indices.length-wrongShape.length}/${indices.length}）`,ok:!wrongShape.length,fingers:wrongShape},{key:'length',label:`长度适合顾客 · ${nailLengthLabel(c.length)}（${indices.length-tooLong.length}/${indices.length}）`,ok:!tooLong.length,fingers:tooLong},{key:'effect',label:`${effects[c.pattern||c.finish]}${['gradient','marble'].includes(c.pattern)?'：每只手至少一指，其余可自由搭配':''}`,ok:effect},{key:'palette',label:'使用顾客期望的色系',ok:palette}];
+ const labels={flower:'小花',star:'星星',pearl:'珍珠',foil:'金箔',bow:'蝴蝶结',droplet:'透明凝胶'},effects={catEye:'猫眼',matte:'哑光',gloss:'亮泽',metal:'镜面',french:'法式',gradient:'渐变',marble:'晕纹',aura:'中心光晕'};
+ const checks=[{key:'painted',label:`先为${indices.length===1?'维修指':'十指'}选择底色（${nails.filter(n=>!n.unpainted).length}/${nails.length}）`,ok:painted},{key:'shape',label:`${indices.length===1?'维修指':'十指'}改为${{round:'圆形',square:'方圆形',almond:'杏仁形',oval:'椭圆形'}[c.shape]}（${indices.length-wrongShape.length}/${indices.length}）`,ok:!wrongShape.length,fingers:wrongShape},{key:'length',label:`长度适合顾客 · ${nailLengthLabel(c.length)}（${indices.length-tooLong.length}/${indices.length}）`,ok:!tooLong.length,fingers:tooLong},{key:'effect',label:`${effects[c.pattern||c.finish]}${['gradient','marble','aura'].includes(c.pattern)?'：每只手至少一指，其余可自由搭配':''}`,ok:effect},{key:'palette',label:'使用顾客期望的色系',ok:palette}];
  if(c.deco)checks.push({key:'features',label:c.id==='lu'?'左手至少两指蝴蝶结，右手至少两指蝴蝶':`至少${c.route==='repair'?1:c.feature.length}指${labels[c.deco]} · 位置由你安排`,ok:features});
  if(c.id==='lin'||c.id==='su')checks.push({key:'comfort',label:c.id==='su'?'不使用凸起的水钻或珍珠':'不使用水钻',ok:nails.every(n=>!has(n,'gem')&&(c.id!=='su'||!has(n,'pearl')))});
+ if(c.look){
+  const ps=nails.map(polishValues),perHand=fn=>[0,1].every(h=>indices.some(i=>Math.floor(i/5)===h&&fn(s.plan.nails[i])));
+  let ok=true,label='';
+  if(c.look==='liquid'){label='透感底胶≤65%，柔细猫眼（光宽≤30%，柔度≥65%），无凸起饰品';ok=ps.every(p=>p.opacity<=.65&&p.catWidth<=.3&&p.catSoftness>=.65)&&nails.every(n=>!['gem','pearl','droplet'].some(t=>has(n,t)));}
+  if(c.look==='velvet'){label='丝绒猫眼：光宽≥30%，柔度≥70%';ok=ps.every(p=>p.catWidth>=.3&&p.catSoftness>=.7);}
+  if(c.look==='syrup'){label='糖浆透感≤55%，薄涂三层';ok=ps.every(p=>p.opacity<=.55&&p.layers===3);}
+  if(c.look==='micro'){label='透裸底≤65%，巧克力细边≤10%，无凸起饰品';ok=ps.every(p=>p.opacity<=.65&&p.tipWidth<=.1&&p.tipColor.toLowerCase()==='#623e32')&&nails.every(n=>!['gem','pearl','droplet'].some(t=>has(n,t)));}
+  if(c.look==='chrome'){label='镜面强度≥70%，每手至少一指微波点';ok=ps.every(p=>p.chrome>=.7)&&perHand(n=>n.polish?.dots);}
+  if(c.look==='aura'){label='每手至少一指中心光晕，晕染范围40%–85%';ok=perHand(n=>n.pattern==='aura'&&polishValues(n).auraSize>=.4&&polishValues(n).auraSize<=.85);}
+  checks.push({key:'material',label,ok});
+ }
  return checks;
 }
 export function evaluateService(s){
- const ids=stepsFor(customer(s.client)).filter(k=>k!=='finish'),indices=targetsFor(s),total=ids.length*indices.length,done=indices.reduce((sum,i)=>sum+ids.filter(k=>s.work[i].done.includes(k)).length,0),missing=[];
+ const ids=stepsFor(customer(s.client),s.plan).filter(k=>k!=='finish'),indices=targetsFor(s),total=ids.length*indices.length,done=indices.reduce((sum,i)=>sum+ids.filter(k=>s.work[i].done.includes(k)).length,0),missing=[];
  for(const i of indices)for(const id of ids)if(!s.work[i].done.includes(id))missing.push({index:i,step:id,label:STAGES[id].name});
- const checks=designRequirements(s),style=checks.filter(r=>['painted','shape','length','effect'].includes(r.key)).every(r=>r.ok),features=checks.filter(r=>['features','comfort'].includes(r.key)).every(r=>r.ok),palette=checks.find(r=>r.key==='palette').ok;
+ const checks=designRequirements(s),style=checks.filter(r=>['painted','shape','length','effect','material'].includes(r.key)).every(r=>r.ok),features=checks.filter(r=>['features','comfort'].includes(r.key)).every(r=>r.ok),palette=checks.find(r=>r.key==='palette').ok;
  const score=Math.round(70*done/total+(style?10:0)+(features?10:0)+(palette?10:0));return {score,missing,style,features,palette,complete:done===total&&style&&features&&palette};
 }
 export function validateSession(value){
- const s=clone(value);if(!s||s.version!==2||!customer(s.client)||!['plan','work','result'].includes(s.phase)||!Number.isInteger(s.step)||s.step<0||s.step>=stepsFor(customer(s.client)).length||!Array.isArray(s.work)||s.work.length!==10)throw Error('服务存档格式无效');
+ const s=clone(value);if(!s||s.version!==2||!customer(s.client)||!['plan','work','result'].includes(s.phase)||!Number.isInteger(s.step)||s.step<0||s.step>=stepsFor(customer(s.client),s.plan).length||!Array.isArray(s.work)||s.work.length!==10)throw Error('服务存档格式无效');
  if(s.consultation!==undefined&&(!Array.isArray(s.consultation)||s.consultation.length>4||new Set(s.consultation).size!==s.consultation.length||s.consultation.some(id=>!['style','care','comfort','budget'].includes(id))))throw Error('顾客沟通记录无效');
  s.plan=validateDesign(s.plan);for(const w of s.work){if(!w||!Array.isArray(w.done)||w.done.length>20||!w.done.every(k=>Object.hasOwn(STAGES,k))||!w.coverage||typeof w.coverage!=='object'||!Number.isFinite(w.initialLength)||w.initialLength<.45||w.initialLength>1.3||!Number.isFinite(w.build)||w.build<0||w.build>1||!w.magnet||!Number.isFinite(w.magnet.u)||w.magnet.u<0||w.magnet.u>1||!Number.isFinite(w.magnet.angle)||Math.abs(w.magnet.angle)>Math.PI||![0,1,2,3,4].includes(w.fitWidth)||![0,1].includes(w.fitCurve)||!Number.isFinite(w.dirty)||w.dirty<0||w.dirty>1||!Number.isFinite(w.old)||w.old<0||w.old>1)throw Error('手指施工记录无效');for(const arr of Object.values(w.coverage))if(!Array.isArray(arr)||arr.length>30||!arr.every(v=>Number.isInteger(v)&&v>=0&&v<30))throw Error('施工覆盖记录无效');}
  for(const w of s.work){for(const key of ['fileTravel','bondFront'])if(w[key]!==undefined&&(!Number.isFinite(w[key])||w[key]<0||w[key]>1))throw Error('施工进度无效');for(const path of Object.values(w.paths||{}))if(!Array.isArray(path)||path.length>1500||path.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||v<0||v>1)))throw Error('工具轨迹记录无效');for(const arr of Object.values(w.fineCoverage||{}))if(!Array.isArray(arr)||arr.length>96||arr.some(i=>!Number.isInteger(i)||i<0||i>=96))throw Error('细部覆盖记录无效');for(const arr of Object.values(w.breaks||{}))if(!Array.isArray(arr)||arr.length>1500||arr.some(i=>!Number.isInteger(i)||i<0||i>=1500))throw Error('笔画记录无效');}

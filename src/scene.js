@@ -3,6 +3,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
 import {halfWidth,constrainDeco} from './state.js';
+import {polishValues} from './season.js';
 const V=(x,y,z)=>new T.Vector3(x,y,z);
 const SIZE=512;
 export function nailSize(n,index){return {w:(index%5===0?.39:index%5===4?.235:.285)*(n.width||1), l:.38+n.length*.34};}
@@ -65,7 +66,7 @@ export class NailScene{
  makeRoom(){
   const wood=new T.MeshStandardMaterial({color:'#ceb096',roughness:.7});this.mesh(new T.BoxGeometry(17,.24,14),wood,V(0,-.36,0));
   const weave=document.createElement('canvas');weave.width=weave.height=128;const ctx=weave.getContext('2d');ctx.fillStyle='#aaa';ctx.fillRect(0,0,128,128);ctx.strokeStyle='#bbb';ctx.lineWidth=1;for(let i=0;i<128;i+=4){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,128);ctx.moveTo(0,i);ctx.lineTo(128,i);ctx.stroke();}const bump=new T.CanvasTexture(weave);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.repeat.set(15,12);
-  const pad=new T.MeshStandardMaterial({color:'#f2e5d8',roughness:.9,bumpMap:bump,bumpScale:.002});this.mesh(new T.BoxGeometry(7,.09,4.8),pad,V(0,-.2,-.3));this.roomMaterials={wood,pad};
+  const pad=new T.MeshStandardMaterial({color:'#f2e5d8',roughness:.9,bumpMap:bump,bumpScale:.002});this.mesh(new T.BoxGeometry(7,.09,4.8),pad,V(0,-.2,-.3));this.roomMaterials={wood,pad};const detailsStart=this.scene.children.length;
   const tray=new T.MeshStandardMaterial({color:'#dcb9a3',roughness:.38,metalness:.15});this.mesh(new T.CylinderGeometry(.85,.85,.06,64),tray,V(3,.05,-1.6));
   for(let i=0;i<4;i++){const c=['#d998ad','#a599cf','#82bbd4','#c7a364'][i];const g=new T.MeshPhysicalMaterial({color:c,roughness:.22,clearcoat:1});this.mesh(new T.CylinderGeometry(.16,.18,.37,24),g,V(-2.8+i*.49,.04,-2.35));this.mesh(new T.CylinderGeometry(.1,.1,.32,24),new T.MeshStandardMaterial({color:'#594338',roughness:.3,metalness:.1}),V(-2.8+i*.49,.38,-2.35));}
   const gold=new T.MeshStandardMaterial({color:'#bd975b',metalness:.75,roughness:.27});
@@ -73,6 +74,7 @@ export class NailScene{
   this.mesh(new T.CylinderGeometry(.46,.42,.13,40),new T.MeshStandardMaterial({color:'#ead7c5',roughness:.25}),V(3.5,-.02,1.65));
   const vase=this.mesh(new T.SphereGeometry(.32,24,16),new T.MeshStandardMaterial({color:'#e6c2b3',roughness:.5}),V(-3.5,.15,1.3),V(1,1.5,1));
   for(let i=0;i<4;i++){const stem=this.mesh(new T.CylinderGeometry(.011,.015,.8,8),new T.MeshStandardMaterial({color:'#8b9a74'}),V(-3.5+(i-1.5)*.08,.86,1.3));stem.rotation.z=(i-1.5)*.15;for(let j=0;j<5;j++){const p=this.mesh(new T.SphereGeometry(.065,12,8),new T.MeshStandardMaterial({color:i%2?'#e5a8b5':'#f6e5dd'}),V(stem.position.x+Math.cos(j*1.26)*.08,1.27+Math.sin(j*1.26)*.05,1.3),V(1,1,.6));}}
+  this.roomDetails=this.scene.children.slice(detailsStart);
  }
  fingerGeometry(length,radius){
   const pts=[],uv=[],idx=[],rings=42,sides=24;
@@ -135,9 +137,14 @@ export class NailScene{
  }
  texture(n,canvas){
   const c=canvas||document.createElement('canvas');c.width=c.height=SIZE;const x=c.getContext('2d');
-  x.fillStyle=n.base;x.fillRect(0,0,SIZE,SIZE);
+  const p=polishValues(n),opacity=1-Math.pow(1-p.opacity,p.layers);
+  x.fillStyle='#e8b8ad';x.fillRect(0,0,SIZE,SIZE);x.globalAlpha=opacity;
+  if(!n.gradient){x.fillStyle=n.base;x.fillRect(0,0,SIZE,SIZE);}
   if(n.gradient){const a=n.gradient.angle*Math.PI/180,dx=Math.sin(a)*SIZE/2,dy=-Math.cos(a)*SIZE/2,g=x.createLinearGradient(SIZE/2-dx,SIZE/2-dy,SIZE/2+dx,SIZE/2+dy);g.addColorStop(0,n.base);g.addColorStop(Math.max(0,.5-n.gradient.range/2),n.base);g.addColorStop(Math.min(1,.5+n.gradient.range/2),n.gradient.color);g.addColorStop(1,n.gradient.color);x.fillStyle=g;x.fillRect(0,0,SIZE,SIZE);}
-  if(n.pattern==='french'){x.fillStyle='#fff7e9';x.beginPath();x.moveTo(0,0);x.lineTo(SIZE,0);x.lineTo(SIZE,SIZE*.16);x.quadraticCurveTo(SIZE*.5,SIZE*.04,0,SIZE*.16);x.fill();}
+  x.globalAlpha=1;
+  if(n.pattern==='french'){x.fillStyle=p.tipColor;x.beginPath();x.moveTo(0,0);x.lineTo(SIZE,0);x.lineTo(SIZE,SIZE*p.tipWidth);x.quadraticCurveTo(SIZE*.5,SIZE*p.tipWidth*.3,0,SIZE*p.tipWidth);x.fill();}
+  if(n.pattern==='aura'){const g=x.createRadialGradient(SIZE*.5,SIZE*.48,0,SIZE*.5,SIZE*.48,SIZE*p.auraSize*.65);g.addColorStop(0,p.auraColor+'ee');g.addColorStop(.3,p.auraColor+'c0');g.addColorStop(.75,p.auraColor+'40');g.addColorStop(1,p.auraColor+'00');x.fillStyle=g;x.fillRect(0,0,SIZE,SIZE);}
+  if(p.dots){x.fillStyle=p.tipColor;for(let row=0;row<7;row++)for(let col=0;col<4;col++){x.beginPath();x.arc((col+.55+(row%2)*.35)*SIZE/4,(row+.6)*SIZE/7,SIZE*.014,0,Math.PI*2);x.fill();}}
   if(n.pattern==='marble'){for(let i=0;i<5;i++){x.strokeStyle=i%2?'#fff6e4aa':'#826b9c55';x.lineWidth=4+i*2;x.beginPath();x.moveTo(-40,i*140);x.bezierCurveTo(320,i*60,40,i*170,570,i*130+80);x.stroke();}}
   const ink=document.createElement('canvas');ink.width=ink.height=SIZE;const ctx=ink.getContext('2d');for(const s of n.strokes)drawStroke(ctx,s);x.drawImage(ink,0,0);
   if(n.finish==='glitter'){let seed=84;const rand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};for(let i=0;i<900;i++){x.fillStyle=i%2?'#f5daa4':'#fff9e4';x.globalAlpha=.35+rand()*.6;x.beginPath();x.arc(rand()*SIZE,rand()*SIZE,.5+rand()*1.6,0,Math.PI*2);x.fill();}x.globalAlpha=1;}
@@ -152,23 +159,23 @@ export class NailScene{
  }
  catShader(mat,n){
   mat.onBeforeCompile=shader=>{
-   shader.uniforms.catU={value:n.magnet.u};shader.uniforms.catAngle={value:n.magnet.angle};
+   const p=polishValues(n);shader.uniforms.catU={value:n.magnet.u};shader.uniforms.catAngle={value:n.magnet.angle};shader.uniforms.catWidth={value:p.catWidth};shader.uniforms.catSoft={value:p.catSoftness};shader.uniforms.catTint={value:new T.Color(p.catColor)};
    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec2 vCatUV;').replace('#include <begin_vertex>','#include <begin_vertex>\nvCatUV=uv;');
-   shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vCatUV;uniform float catU;uniform float catAngle;').replace('#include <color_fragment>','#include <color_fragment>\nfloat stripe=exp(-pow((vCatUV.x-catU)*cos(catAngle)+(vCatUV.y-.5)*sin(catAngle),2.0)*380.0);float shimmer=.35+.65*pow(abs(dot(normalize(vNormal),normalize(vViewPosition))),2.0);diffuseColor.rgb+=vec3(.42,.35,.24)*stripe*shimmer;');
+   shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vCatUV;uniform float catU;uniform float catAngle;uniform float catWidth;uniform float catSoft;uniform vec3 catTint;').replace('#include <color_fragment>','#include <color_fragment>\nvec3 catView=normalize(vViewPosition);float slide=catView.x*.18+catView.y*.08;float axis=(vCatUV.x-catU)*cos(catAngle)+(vCatUV.y-.5)*sin(catAngle)+slide;float stripe=exp(-pow(axis/max(.025,catWidth*.48),2.0));float glow=exp(-pow(axis/max(.08,catWidth),2.0))*catSoft*.3;float grain=fract(sin(dot(vCatUV,vec2(1234.56,783.32)))*43758.54);float sheen=.6+.4*pow(abs(dot(normalize(vNormal),catView)),2.0);diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*.35+catTint*.9,clamp((stripe*.68+glow)*sheen*(.88+grain*.12),0.0,.88));');
    mat.userData.shader=shader;
-  };mat.customProgramCacheKey=()=> 'cat-eye-v1';mat.needsUpdate=true;
+  };mat.customProgramCacheKey=()=> 'cat-eye-v2';mat.needsUpdate=true;
  }
  sync(design,force=false){
   this.design=design;let shadowsChanged=false;
   for(const rec of this.rec){const n=design.nails[rec.index],key=JSON.stringify(n);if(!force&&key===rec.key)continue;
    const shapeKey=JSON.stringify([n.shape,n.length,n.width,n.curve,n.build,n.shapeBlend]);if(shapeKey!==rec.shapeKey){const g=curvedGeometry(n,rec.index);rec.top.geometry.dispose();rec.top.geometry=g;rec.rim.geometry.dispose();rec.rim.geometry=sideGeometry(g);rec.shapeKey=shapeKey;shadowsChanged=true;}
-   const textureKey=JSON.stringify([n.base,n.gradient,n.strokes,n.pattern,n.surface,n.finish==='glitter']);
+   const textureKey=JSON.stringify([n.base,n.gradient,n.strokes,n.pattern,n.surface,n.finish==='glitter',n.polish]);
    if(force||textureKey!==rec.textureKey){rec.canvas=this.texture(n,rec.canvas);if(!rec.tex){rec.tex=new T.CanvasTexture(rec.canvas);rec.tex.colorSpace=T.SRGBColorSpace;rec.tex.anisotropy=Math.min(4,this.renderer.capabilities.getMaxAnisotropy());rec.mat.map=rec.tex;}else rec.tex.needsUpdate=true;rec.textureKey=textureKey;}
    const coat=n.surface?.activeStep,wet=['base','build','top'].includes(coat)&&n.surface.paths?.[coat]?.length>1;
    if(wet){if(!rec.wet){const mask=document.createElement('canvas');mask.width=mask.height=SIZE;const alpha=new T.CanvasTexture(mask);rec.wet=new T.Mesh(rec.top.geometry,new T.MeshPhysicalMaterial({color:'#fff3ed',alphaMap:alpha,transparent:true,opacity:.24,roughness:.04,clearcoat:1,clearcoatRoughness:.02,depthWrite:false,side:T.DoubleSide}));rec.wet.position.y=.003;rec.group.add(rec.wet);}const mask=rec.wet.material.alphaMap.image,ctx=mask.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,SIZE,SIZE);traceBrush(ctx,n.surface.paths[coat],n.surface.breaks?.[coat]);rec.wet.material.alphaMap.needsUpdate=true;rec.wet.geometry=rec.top.geometry;rec.wet.visible=true;}else if(rec.wet)rec.wet.visible=false;
-   const oldFinish=rec.finish;const matte=n.topcoat==='matte'||n.finish==='matte';rec.mat.roughness=matte?.88:n.finish==='metal'?.22:n.surface&&!n.surface.color?.52-.35*(n.surface.undercoat||0):.15;rec.mat.metalness=n.finish==='metal'?.88:.05;rec.mat.clearcoat=matte?0:1;
+   const oldFinish=rec.finish,p=polishValues(n),matte=n.topcoat==='matte'||n.finish==='matte',chrome=n.surface&&!n.surface.color?0:p.chrome;rec.mat.roughness=matte?.88:chrome>.5?.09:n.surface&&!n.surface.color?.52-.35*(n.surface.undercoat||0):.12;rec.mat.metalness=.05+chrome*.92;rec.mat.clearcoat=matte?0:1;rec.mat.clearcoatRoughness=.045;rec.mat.envMapIntensity=chrome>.5?1.7:1;rec.mat.ior=1.48;
    if(oldFinish!==n.finish){rec.mat.userData.shader=null;if(n.finish==='catEye')this.catShader(rec.mat,n);else{rec.mat.onBeforeCompile=()=>{};rec.mat.customProgramCacheKey=()=> 'polish';rec.mat.needsUpdate=true;}}
-   const shader=rec.mat.userData.shader;if(shader){shader.uniforms.catU.value=n.magnet.u;shader.uniforms.catAngle.value=n.magnet.angle;}
+   const shader=rec.mat.userData.shader;if(shader){shader.uniforms.catU.value=n.magnet.u;shader.uniforms.catAngle.value=n.magnet.angle;shader.uniforms.catWidth.value=p.catWidth;shader.uniforms.catSoft.value=p.catSoftness;shader.uniforms.catTint.value.set(p.catColor);}
    if(n.tipPreview){const p={...n,...n.tipPreview,build:0,shapeBlend:1},pk=JSON.stringify(n.tipPreview);if(!rec.preview){rec.preview=new T.Mesh(new T.BufferGeometry(),new T.MeshPhysicalMaterial({color:'#fff7e8',transparent:true,opacity:.5,roughness:.18,clearcoat:1,side:T.DoubleSide,depthWrite:false}));rec.group.add(rec.preview);}if(pk!==rec.previewKey){rec.preview.geometry.dispose();rec.preview.geometry=curvedGeometry(p,rec.index);rec.previewKey=pk;}rec.preview.position.y=n.tipPreview.hover?.13:.006;rec.preview.rotation.x=n.tipPreview.hover?-.13:-(1-n.tipPreview.front)*.12;rec.preview.material.opacity=n.tipPreview.hover?.22:.55;rec.preview.visible=true;}else if(rec.preview)rec.preview.visible=false;
    rec.rim.material.color.set(n.base);const decoKey=JSON.stringify([n.decorations,n.surface?.ghost])+'-'+shapeKey;if(decoKey!==rec.decoKey){this.updateDecos(rec,n);rec.decoKey=decoKey;shadowsChanged=true;}rec.finish=n.finish;rec.key=key;
   }
@@ -178,7 +185,8 @@ export class NailScene{
   for(const child of [...rec.decos.children]){child.traverse(o=>{o.geometry?.dispose();if(o.material&&!this.sharedMats?.includes(o.material))o.material.dispose();});rec.decos.remove(child);}
   for(const source of [...n.decorations.filter(d=>!d.hidden),...(n.surface?.ghost||[]).filter(d=>!d.hidden).map(d=>({...d,ghost:true}))]){const d=constrainDeco(n,{...source});const parent=new T.Group();const q=surface(n,rec.index,d.u,d.v),eps=.005,a=surface(n,rec.index,d.u+eps,d.v),b=surface(n,rec.index,d.u,d.v+eps),normal=a.sub(q).cross(b.sub(q)).normalize();parent.position.copy(q).addScaledVector(normal,.008);parent.quaternion.setFromUnitVectors(V(0,1,0),normal);parent.rotateY(-d.rotation);parent.userData.id=d.id;
    const width=nailSize(n,rec.index).w;
-   if(['gem','pearl'].includes(d.type)){const radius=width*(d.type==='gem'?.095:.085)*d.scale;const m=new T.MeshPhysicalMaterial({color:d.type==='gem'?'#e5d2a9':'#fff1de',metalness:d.type==='gem'?.4:.05,roughness:d.type==='gem'?.06:.21,clearcoat:1,transmission:d.type==='gem'?.23:0,ior:2.1});const mesh=new T.Mesh(d.type==='gem'?new T.OctahedronGeometry(radius,0):new T.SphereGeometry(radius,20,14),m);mesh.position.y=radius*.65;parent.add(mesh);const setting=new T.Mesh(new T.TorusGeometry(radius*.85,.004,6,20),new T.MeshStandardMaterial({color:'#c7a364',metalness:.8,roughness:.25}));setting.rotation.x=Math.PI/2;setting.position.y=.004;parent.add(setting);}
+   if(d.type==='droplet'){const r=width*.11*d.scale,m=new T.MeshPhysicalMaterial({color:'#fff8ff',roughness:.025,transmission:.95,thickness:.035,ior:1.46,clearcoat:1,envMapIntensity:1.5});const mesh=new T.Mesh(new T.SphereGeometry(r,24,16),m);mesh.scale.set(.8,.5,1.45);mesh.position.y=r*.25;parent.add(mesh);}
+   else if(['gem','pearl'].includes(d.type)){const radius=width*(d.type==='gem'?.095:.085)*d.scale;const m=new T.MeshPhysicalMaterial({color:d.type==='gem'?'#e5d2a9':'#fff1de',metalness:d.type==='gem'?.4:.05,roughness:d.type==='gem'?.06:.21,clearcoat:1,transmission:d.type==='gem'?.23:0,ior:2.1});const mesh=new T.Mesh(d.type==='gem'?new T.OctahedronGeometry(radius,0):new T.SphereGeometry(radius,20,14),m);mesh.position.y=radius*.65;parent.add(mesh);const setting=new T.Mesh(new T.TorusGeometry(radius*.85,.004,6,20),new T.MeshStandardMaterial({color:'#c7a364',metalness:.8,roughness:.25}));setting.rotation.x=Math.PI/2;setting.position.y=.004;parent.add(setting);}
    else{const pts=[],uv=[],ids=[],sz=width*.23*d.scale,size=nailSize(n,rec.index);parent.position.set(0,0,0);parent.quaternion.identity();for(let j=0;j<=8;j++)for(let i=0;i<=8;i++){const x=(i/8-.5)*sz,z=(j/8-.5)*sz,c=Math.cos(d.rotation),s=Math.sin(d.rotation),u=d.u+(x*c-z*s)/size.w,v=d.v-(x*s+z*c)/size.l;const q=surface(n,rec.index,u,v);pts.push(q.x,q.y+.003,q.z);uv.push(i/8,1-j/8);}for(let j=0;j<8;j++)for(let i=0;i<8;i++){const a=j*9+i;ids.push(a,a+1,a+9,a+1,a+10,a+9);}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pts,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(ids);g.computeVertexNormals();parent.add(new T.Mesh(g,new T.MeshStandardMaterial({map:this.stickers[d.type],transparent:true,alphaTest:.08,roughness:.35,metalness:.12,side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2})));}
    if(source.ghost)parent.traverse(o=>{if(o.material){o.material.transparent=true;o.material.opacity=.28;o.material.depthWrite=false;}});rec.decos.add(parent);
   }

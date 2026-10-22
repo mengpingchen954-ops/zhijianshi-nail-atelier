@@ -1,7 +1,7 @@
 export const COLORS=[['#d998ad','玫瑰奶冻'],['#f1ddc8','珍珠奶油'],['#ed927a','蜜桃珊瑚'],['#a599cf','薰衣草'],['#92ac9c','鼠尾草'],['#27334f','星夜蓝'],['#b94160','樱桃红'],['#82bbd4','晴空蓝'],['#fffaf2','象牙白'],['#c7a364','香槟金']];
 export const SHAPES=[['round','圆形'],['square','方圆形'],['almond','杏仁形'],['oval','椭圆形'],['coffin','芭蕾形']];
 export const FINISHES=[['gloss','亮泽'],['matte','哑光'],['catEye','猫眼'],['glitter','亮片'],['metal','金属']];
-export const DECOS=[['flower','小雏菊'],['heart','爱心'],['star','星星'],['gem','水钻'],['pearl','珍珠'],['bow','蝴蝶结'],['butterfly','蝴蝶'],['foil','金箔']];
+export const DECOS=[['flower','小雏菊'],['heart','爱心'],['star','星星'],['gem','水钻'],['pearl','珍珠'],['bow','蝴蝶结'],['butterfly','蝴蝶'],['foil','金箔'],['droplet','透明凝胶']];
 export const FINGERS=['拇指','食指','中指','无名指','小指'];
 export const COMMISSIONS=[
  {id:'quiet',name:'晨雾茶会',text:'我想要低调温柔的一套圆甲，留一点点点缀就好。',preference:'温柔、留白；图案由你决定。'},
@@ -42,7 +42,14 @@ export function validateDesign(x){
   n.base=n.base.toLowerCase();
   if(n.unpainted!==undefined&&typeof n.unpainted!=='boolean')throw Error('底色选择记录无效');
   for(const key of ['width','curve','build'])if(n[key]!==undefined&&!num(n[key],key==='build'?0:.5,key==='build'?1:1.6))throw Error('甲床参数无效');
-  if(n.pattern!==undefined&&n.pattern!==null&&!['french','marble'].includes(n.pattern))throw Error('图案工艺无效');
+  if(n.pattern!==undefined&&n.pattern!==null&&!['french','marble','aura'].includes(n.pattern))throw Error('图案工艺无效');
+  if(n.polish!==undefined){
+   const p=n.polish;if(!p||typeof p!=='object'||Array.isArray(p))throw Error('材质参数无效');
+   for(const [key,a,b] of [['opacity',.15,1],['catWidth',.06,.6],['catSoftness',0,1],['chrome',0,1],['tipWidth',.025,.25],['auraSize',.2,1]])if(p[key]!==undefined&&!num(p[key],a,b))throw Error('材质参数无效');
+   if(p.layers!==undefined&&![1,2,3].includes(p.layers)||p.dots!==undefined&&typeof p.dots!=='boolean')throw Error('叠层参数无效');
+   for(const key of ['catColor','tipColor','auraColor'])if(p[key]!==undefined&&!hex(p[key]))throw Error('材质颜色无效');
+   if(Object.keys(p).some(k=>!['opacity','layers','catWidth','catSoftness','chrome','tipWidth','auraSize','dots','catColor','tipColor','auraColor'].includes(k)))throw Error('未知材质参数');
+  }
   if(n.topcoat!==undefined&&!['gloss','matte'].includes(n.topcoat))throw Error('封层无效');
   delete n.surface;delete n.shapeBlend;delete n.tipPreview;
   if(!n.magnet||!num(n.magnet.u,0,1)||!num(n.magnet.angle,-Math.PI,Math.PI))throw Error('无效磁吸参数');
